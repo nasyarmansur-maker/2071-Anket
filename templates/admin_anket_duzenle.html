@@ -1,0 +1,229 @@
+{% extends "admin_base.html" %}
+{% set aktif_sayfa = "anketler" %}
+{% block baslik %}Anket Düzenle{% endblock %}
+{% block ekstra_css %}
+<style>
+.modal-arka{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+.modal-arka.acik{display:flex}
+.modal{background:var(--yuzey);border-radius:var(--r-xl);padding:1.5rem;width:100%;max-width:500px;margin:2rem auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal-baslik{font-size:17px;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.modal-kapat{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gri)}
+.secenek-satir{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.secenek-satir input{flex:1}
+</style>
+{% endblock %}
+{% block admin_icerik %}
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+  <a href="/admin/anketler" class="btn btn-gri btn-kucuk">← Geri</a>
+  <div class="sayfa-baslik" style="margin-bottom:0">{{ anket.icon }} {{ anket.baslik }}</div>
+</div>
+
+<!-- Anket Başlık Düzenle -->
+<div class="kart" style="margin-bottom:1rem">
+  <div style="font-size:14px;font-weight:700;margin-bottom:.75rem">⚙️ Anket Bilgileri</div>
+  <form method="POST" action="/admin/anket/{{ anket.id }}/guncelle">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:140px">
+        <label class="alan-lbl">Başlık</label>
+        <input type="text" name="baslik" value="{{ anket.baslik }}" required>
+      </div>
+      <div style="width:80px">
+        <label class="alan-lbl">İkon</label>
+        <input type="text" name="icon" value="{{ anket.icon }}">
+      </div>
+      <div style="width:130px">
+        <label class="alan-lbl">Rol</label>
+        <select name="rol">
+          {% for r,l in [('ogrenci','Öğrenci'),('veli','Veli'),('ogretmen','Öğretmen'),('diger','Diğer')] %}
+          <option value="{{ r }}" {% if anket.rol==r %}selected{% endif %}>{{ l }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="alan-lbl">Durum</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;height:38px">
+          <input type="checkbox" name="aktif" {% if anket.aktif %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--ana)"> Aktif
+        </label>
+      </div>
+      <button type="submit" class="btn btn-ana">Kaydet</button>
+    </div>
+  </form>
+</div>
+
+<!-- Bölümler -->
+{% for bolum in anket.bolumler %}
+<div class="bolum-edit">
+  <!-- Bölüm Başlığı -->
+  <div class="bolum-edit-baslik">
+    <form method="POST" action="/admin/bolum/{{ bolum.id }}/guncelle" style="display:flex;gap:6px;align-items:center;flex:1;min-width:0">
+      <input type="hidden" name="anket_id" value="{{ anket.id }}">
+      <input type="text" name="baslik" value="{{ bolum.baslik }}" style="flex:1;font-weight:700">
+      <button type="submit" class="btn btn-gri btn-kucuk">✓</button>
+    </form>
+    <form method="POST" action="/admin/bolum/{{ bolum.id }}/sil" onsubmit="return confirm('Bu bölümü ve tüm sorularını silmek istediğinizden emin misiniz?')">
+      <input type="hidden" name="anket_id" value="{{ anket.id }}">
+      <button type="submit" class="btn btn-tehlike btn-kucuk">🗑 Bölümü Sil</button>
+    </form>
+  </div>
+
+  <!-- Sorular -->
+  {% for soru in bolum.sorular %}
+  <div class="soru-item">
+    <div class="soru-item-ust">
+      <span style="font-size:13px;font-weight:500;flex:1">{{ soru.metin }}</span>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <span class="soru-tip-badge tip-{{ soru.tip }}">
+          {% if soru.tip=='yildiz' %}⭐ Yıldız{% elif soru.tip=='secim' %}🔘 Seçim{% else %}📝 Metin{% endif %}
+        </span>
+        <button class="btn btn-gri btn-kucuk" onclick="soruDuzenle({{ soru.id }}, {{ soru|tojson }})">✏️</button>
+        <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Bu soruyu silmek istediğinizden emin misiniz?')">
+          <input type="hidden" name="anket_id" value="{{ anket.id }}">
+          <button type="submit" class="btn btn-tehlike btn-kucuk">✕</button>
+        </form>
+      </div>
+    </div>
+    {% if soru.secenekler %}
+    <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">
+      {% for s in soru.secenekler %}
+      <span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:2px 8px;border-radius:20px">{{ s }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Yeni Soru Ekle -->
+  <button class="btn btn-outline btn-kucuk" style="margin-top:8px" onclick="soruEkleAc({{ bolum.id }}, {{ anket.id }})">
+    ➕ Soru Ekle
+  </button>
+</div>
+{% endfor %}
+
+<!-- Yeni Bölüm Ekle -->
+<div class="kart">
+  <div style="font-size:14px;font-weight:700;margin-bottom:.75rem">➕ Yeni Bölüm Ekle</div>
+  <form method="POST" action="/admin/bolum/ekle" style="display:flex;gap:8px;flex-wrap:wrap">
+    <input type="hidden" name="anket_id" value="{{ anket.id }}">
+    <input type="text" name="baslik" placeholder="Bölüm başlığı" required style="flex:1;min-width:140px">
+    <button type="submit" class="btn btn-ana">Ekle</button>
+  </form>
+</div>
+
+<!-- Soru Ekleme Modalı -->
+<div class="modal-arka" id="soruEkleModal">
+  <div class="modal">
+    <div class="modal-baslik">
+      ➕ Soru Ekle
+      <button class="modal-kapat" onclick="modalKapat('soruEkleModal')">✕</button>
+    </div>
+    <form method="POST" action="/admin/soru/ekle" id="soruEkleForm">
+      <input type="hidden" name="bolum_id" id="seBolumId">
+      <input type="hidden" name="anket_id" id="seAnketId">
+      <div class="alan-grubu">
+        <label class="alan-lbl">Soru Metni</label>
+        <textarea name="metin" rows="2" placeholder="Soruyu buraya yazın..." required></textarea>
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">Soru Tipi</label>
+        <select name="tip" id="seTip" onchange="tipDegis('se')">
+          <option value="yildiz">⭐ Yıldız (1-5)</option>
+          <option value="secim">🔘 Çoktan Seçmeli</option>
+          <option value="metin">📝 Metin Girişi</option>
+        </select>
+      </div>
+      <div id="seSecenekler" style="display:none">
+        <label class="alan-lbl">Seçenekler</label>
+        <div id="seSecenekListe"></div>
+        <button type="button" class="btn btn-gri btn-kucuk" onclick="secenek_ekle('seSecenekListe')" style="margin-top:6px">+ Seçenek Ekle</button>
+      </div>
+      <div class="alan-grubu" style="margin-top:.75rem">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" name="zorunlu" checked style="width:18px;height:18px;accent-color:var(--ana)"> Zorunlu soru
+        </label>
+      </div>
+      <button type="submit" class="btn btn-ana btn-tam" style="margin-top:.5rem">Soruyu Ekle</button>
+    </form>
+  </div>
+</div>
+
+<!-- Soru Düzenleme Modalı -->
+<div class="modal-arka" id="soruDuzenleModal">
+  <div class="modal">
+    <div class="modal-baslik">
+      ✏️ Soruyu Düzenle
+      <button class="modal-kapat" onclick="modalKapat('soruDuzenleModal')">✕</button>
+    </div>
+    <form method="POST" id="soruDuzenleForm">
+      <input type="hidden" name="anket_id" value="{{ anket.id }}">
+      <div class="alan-grubu">
+        <label class="alan-lbl">Soru Metni</label>
+        <textarea name="metin" id="sdMetin" rows="2" required></textarea>
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">Soru Tipi</label>
+        <select name="tip" id="sdTip" onchange="tipDegis('sd')">
+          <option value="yildiz">⭐ Yıldız (1-5)</option>
+          <option value="secim">🔘 Çoktan Seçmeli</option>
+          <option value="metin">📝 Metin Girişi</option>
+        </select>
+      </div>
+      <div id="sdSecenekler" style="display:none">
+        <label class="alan-lbl">Seçenekler</label>
+        <div id="sdSecenekListe"></div>
+        <button type="button" class="btn btn-gri btn-kucuk" onclick="secenek_ekle('sdSecenekListe')" style="margin-top:6px">+ Seçenek Ekle</button>
+      </div>
+      <div class="alan-grubu" style="margin-top:.75rem">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" name="zorunlu" id="sdZorunlu" style="width:18px;height:18px;accent-color:var(--ana)"> Zorunlu soru
+        </label>
+      </div>
+      <button type="submit" class="btn btn-ana btn-tam" style="margin-top:.5rem">Değişiklikleri Kaydet</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function modalAc(id){ document.getElementById(id).classList.add('acik'); document.body.style.overflow='hidden'; }
+function modalKapat(id){ document.getElementById(id).classList.remove('acik'); document.body.style.overflow=''; }
+document.querySelectorAll('.modal-arka').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)modalKapat(m.id)}));
+
+function soruEkleAc(bolumId, anketId){
+  document.getElementById('seBolumId').value=bolumId;
+  document.getElementById('seAnketId').value=anketId;
+  document.getElementById('seSecenekListe').innerHTML='';
+  document.getElementById('seTip').value='yildiz';
+  tipDegis('se');
+  modalAc('soruEkleModal');
+}
+
+function soruDuzenle(sid, soru){
+  document.getElementById('soruDuzenleForm').action='/admin/soru/'+sid+'/guncelle';
+  document.getElementById('sdMetin').value=soru.metin;
+  document.getElementById('sdTip').value=soru.tip;
+  document.getElementById('sdZorunlu').checked=!!soru.zorunlu;
+  const liste=document.getElementById('sdSecenekListe');
+  liste.innerHTML='';
+  if(soru.secenekler && soru.secenekler.length>0){
+    soru.secenekler.forEach(s=>secenek_ekle('sdSecenekListe',s));
+  }
+  tipDegis('sd');
+  modalAc('soruDuzenleModal');
+}
+
+function tipDegis(pref){
+  const tip=document.getElementById(pref+'Tip').value;
+  const sec=document.getElementById(pref+'Secenekler');
+  sec.style.display=(tip==='secim')?'block':'none';
+}
+
+function secenek_ekle(listeId, deger=''){
+  const liste=document.getElementById(listeId);
+  const satir=document.createElement('div');
+  satir.className='secenek-satir';
+  satir.innerHTML=`<input type="text" name="secenek" value="${deger}" placeholder="Seçenek..." required>
+    <button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>`;
+  liste.appendChild(satir);
+}
+</script>
+{% endblock %}

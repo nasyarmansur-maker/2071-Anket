@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="tr" data-tema="{{ tema }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block baslik %}Okul Anketi{% endblock %} — {{ okul_adi }}</title>
+<link rel="stylesheet" href="/static/css/style.css">
+{% block ekstra_css %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div class="header-ic">
+    <a href="/" class="logo-bolum">
+      {% if amblem %}
+        <img src="{{ amblem }}" class="amblem-img" alt="Amblem">
+      {% else %}
+        <div class="amblem-placeholder">🏫</div>
+      {% endif %}
+      <div>
+        <div class="okul-adi-header">{{ okul_adi }}</div>
+        {% if okul_sehir %}<div class="okul-sehir-header">{{ okul_sehir }}</div>{% endif %}
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/" class="header-link">Ana Sayfa</a>
+      <a href="/admin" class="header-link">🔐 Yönetici</a>
+    </nav>
+  </div>
+</header>
+<main>{% block icerik %}{% endblock %}</main>
+</body>
+</html>

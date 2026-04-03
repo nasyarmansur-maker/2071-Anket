@@ -1,0 +1,110 @@
+{% extends "admin_base.html" %}
+{% set aktif_sayfa = "ayarlar" %}
+{% block baslik %}Sistem Ayarları{% endblock %}
+{% block admin_icerik %}
+
+<div class="sayfa-baslik">⚙️ Sistem Ayarları</div>
+
+{% if mesaj %}<div class="basari-kutu">{{ mesaj }}</div>{% endif %}
+
+<form method="POST" enctype="multipart/form-data">
+
+  <!-- Okul Bilgileri -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem">🏫 Okul Bilgileri</div>
+
+    <div class="alan-grubu">
+      <label class="alan-lbl">Okul Adı</label>
+      <input type="text" name="okul_adi" value="{{ okul_adi }}" placeholder="Örnek İlköğretim Okulu">
+    </div>
+    <div class="alan-grubu">
+      <label class="alan-lbl">Şehir / İlçe</label>
+      <input type="text" name="okul_sehir" value="{{ okul_sehir }}" placeholder="Erzurum">
+    </div>
+
+    <!-- Amblem -->
+    <div class="alan-grubu">
+      <label class="alan-lbl">Okul Amblemi</label>
+      {% if amblem %}
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <img src="{{ amblem }}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--kenar)">
+        <div>
+          <div style="font-size:13px;color:var(--yesil);margin-bottom:4px">✓ Amblem yüklü</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+            <input type="checkbox" name="amblem_sil" style="accent-color:var(--kirmizi)"> Amblemi kaldır
+          </label>
+        </div>
+      </div>
+      {% endif %}
+      <input type="file" name="amblem" accept="image/*" style="font-size:13px">
+      <div style="font-size:12px;color:var(--metin-uc);margin-top:4px">PNG veya JPG, max 2 MB. Yuvarlak olarak gösterilir.</div>
+    </div>
+  </div>
+
+  <!-- Güvenlik -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem">🔐 Güvenlik</div>
+    <div class="alan-grubu">
+      <label class="alan-lbl">Yönetici Şifresi</label>
+      <input type="text" name="admin_sifre" value="{{ admin_sifre }}" placeholder="okul2024">
+      <div style="font-size:12px;color:var(--metin-uc);margin-top:4px">Değiştirdikten sonra kaydedin ve yeni şifreyle giriş yapın.</div>
+    </div>
+  </div>
+
+  <!-- Tema -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem">🎨 Renk Teması</div>
+    <div class="tema-grid">
+      {% for t_adi, t_renk, t_label in [
+        ('mavi','#185FA5','Mavi'),('yesil','#2d7a2d','Yeşil'),
+        ('kirmizi','#c0392b','Kırmızı'),('mor','#6c3483','Mor'),
+        ('turkuaz','#0f7173','Turkuaz'),('turuncu','#d35400','Turuncu')
+      ] %}
+      <label style="text-align:center;cursor:pointer">
+        <div class="tema-top {% if tema==t_adi %}secili{% endif %}" style="background:{{ t_renk }}">
+          <input type="radio" name="tema" value="{{ t_adi }}" {% if tema==t_adi %}checked{% endif %}>
+          {% if tema==t_adi %}✓{% endif %}
+        </div>
+        <div style="font-size:11px;color:var(--metin-ik);margin-top:4px">{{ t_label }}</div>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Anasayfa -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem">🏠 Anasayfa Görünümü</div>
+
+    <div class="alan-grubu">
+      <label class="alan-lbl">Karşılama Metni</label>
+      <textarea name="hosgeldin_metin" rows="2">{{ hosgeldin }}</textarea>
+    </div>
+    <div class="alan-grubu">
+      <label class="alan-lbl">Alt Yazı</label>
+      <input type="text" name="alt_yazi" value="{{ alt_yazi }}" placeholder="Anketler anonim olarak kaydedilir.">
+    </div>
+
+    <div class="alan-grubu">
+      <label class="alan-lbl">Anket Kartı Görünümü</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+        {% for g_val, g_label, g_icon in [
+          ('kartlar','Kart Izgara','⊞'),('liste','Liste','☰'),('minimal','Minimal','▬')
+        ] %}
+        <label style="flex:1;min-width:120px;cursor:pointer">
+          <input type="radio" name="anasayfa_gorunum" value="{{ g_val }}" {% if gorunum==g_val %}checked{% endif %} style="display:none">
+          <div style="border:2px solid {% if gorunum==g_val %}var(--ana){% else %}var(--kenar){% endif %};border-radius:var(--r);padding:10px;text-align:center;transition:all .15s">
+            <div style="font-size:24px;margin-bottom:4px">{{ g_icon }}</div>
+            <div style="font-size:13px;font-weight:{% if gorunum==g_val %}700{% else %}500{% endif %};color:{% if gorunum==g_val %}var(--ana){% else %}var(--metin-ik){% endif %}">{{ g_label }}</div>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-ana btn-tam" style="padding:14px;font-size:16px">
+    💾 Tüm Ayarları Kaydet
+  </button>
+</form>
+
+{% endblock %}

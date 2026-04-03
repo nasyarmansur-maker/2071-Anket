@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block baslik %}{{ anket.baslik }}{% endblock %}
+{% block icerik %}
+<div class="kap">
+  <div class="form-baslik">
+    <span>{{ anket.icon }}</span> {{ anket.baslik }}
+  </div>
+  <form method="POST" id="anketForm">
+    {% for bolum in anket.bolumler %}
+    <div class="bolum">
+      <div class="bolum-baslik">
+        <span class="bolum-no">{{ loop.index }}</span>
+        {{ bolum.baslik }}
+      </div>
+      {% for soru in bolum.sorular %}
+      <div class="soru">
+        <div class="soru-metin">
+          {{ soru.metin }}
+          {% if soru.zorunlu %}<span class="zorunlu">*</span>{% endif %}
+        </div>
+
+        {% if soru.tip == "yildiz" %}
+        <div class="yildiz-grup">
+          {% for i in [5,4,3,2,1] %}
+          <input type="radio" name="s_{{ soru.id }}" id="y{{ soru.id }}_{{ i }}" value="{{ i }}" {% if soru.zorunlu %}required{% endif %}>
+          <label for="y{{ soru.id }}_{{ i }}">★</label>
+          {% endfor %}
+        </div>
+
+        {% elif soru.tip == "secim" %}
+        <div class="secim-grup">
+          {% for opt in soru.secenekler %}
+          <label class="secim-opt">
+            <input type="radio" name="s_{{ soru.id }}" value="{{ opt }}" {% if soru.zorunlu %}required{% endif %}>
+            {{ opt }}
+          </label>
+          {% endfor %}
+        </div>
+
+        {% elif soru.tip == "metin" %}
+        <textarea name="s_{{ soru.id }}" placeholder="Görüşünüzü buraya yazın..."></textarea>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <button type="submit" class="btn btn-ana btn-tam" style="padding:14px;font-size:16px;margin-top:.5rem">
+      ✓ Anketi Gönder
+    </button>
+  </form>
+  <p style="text-align:center;font-size:12px;color:var(--metin-uc);margin-top:1rem">
+    * ile işaretli alanlar zorunludur. Yanıtlar anonim kaydedilir.
+  </p>
+</div>
+{% endblock %}

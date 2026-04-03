@@ -1,0 +1,50 @@
+{% extends "admin_base.html" %}
+{% set aktif_sayfa = "anketler" %}
+{% block baslik %}Sonuçlar — {{ anket.baslik }}{% endblock %}
+{% block admin_icerik %}
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+  <a href="/admin/anketler" class="btn btn-gri btn-kucuk">← Geri</a>
+  <div class="sayfa-baslik" style="margin-bottom:0;flex:1">{{ anket.icon }} {{ anket.baslik }} Sonuçları</div>
+  <a href="/admin/excel/{{ anket.id }}" class="btn btn-ana btn-kucuk">⬇ Excel İndir</a>
+</div>
+
+<div class="kart" style="margin-bottom:1rem">
+  <strong>{{ yanitlar|length }}</strong> yanıt bulunuyor.
+</div>
+
+{% if yanitlar %}
+{% for y in yanitlar %}
+<div class="yanit-kart">
+  <div class="yanit-kart-ust">
+    <span class="yanit-meta">📅 {{ y.tarih }} {{ y.saat }} &nbsp;|&nbsp; #{{ y.id }}</span>
+    <form method="POST" action="/admin/yanit_sil/{{ y.id }}" onsubmit="return confirm('Bu yanıtı silmek istediğinizden emin misiniz?')">
+      <button type="submit" class="btn btn-tehlike btn-kucuk">🗑 Sil</button>
+    </form>
+  </div>
+  <div class="veri-satirlar">
+    {% for bolum in anket.bolumler %}
+      {% for soru in bolum.sorular %}
+        {% set val = y.veriler.get('s_' ~ soru.id, '') %}
+        {% if val %}
+          {% if val|int(-1) >= 1 and val|int(-1) <= 5 %}
+          <span class="veri-chip">
+            {{ soru.metin[:30] }}:
+            <span class="yildiz-goster">{% for i in range(val|int) %}★{% endfor %}{% for i in range(5-val|int) %}☆{% endfor %}</span>
+          </span>
+          {% elif val|length > 40 %}
+          <div class="yorum-alinti" style="width:100%"><em>{{ soru.metin[:40] }}:</em> {{ val }}</div>
+          {% else %}
+          <span class="veri-chip">{{ val }}</span>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="bos-durum">Bu ankete henüz yanıt gelmemiş.</div>
+{% endif %}
+
+{% endblock %}
