@@ -63,6 +63,15 @@
                  style="width:18px;height:18px;accent-color:var(--ana)"> Aktif
         </label>
       </div>
+      <div>
+        <label class="alan-lbl">Anket Görünümü</label>
+        <select name="gorunum" style="width:auto">
+          <option value="varsayilan" {% if (anket.gorunum or 'varsayilan')=='varsayilan' %}selected{% endif %}>🔄 Sistem Varsayılanı</option>
+          <option value="adim" {% if anket.gorunum=='adim' %}selected{% endif %}>📋 Adım Adım</option>
+          <option value="tek"  {% if anket.gorunum=='tek'  %}selected{% endif %}>📄 Tek Sayfa</option>
+        </select>
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Sistem varsayılanı Ayarlar'dan belirlenir</div>
+      </div>
       <button type="submit" class="btn btn-ana">💾 Kaydet</button>
     </div>
   </form>

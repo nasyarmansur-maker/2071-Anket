@@ -28,7 +28,8 @@ def db_init():
             aktif INTEGER DEFAULT 1, sira INTEGER DEFAULT 0,
             baslangic_tarihi TEXT DEFAULT NULL,
             bitis_tarihi TEXT DEFAULT NULL,
-            aciklama TEXT DEFAULT ''
+            aciklama TEXT DEFAULT '',
+            gorunum TEXT DEFAULT 'varsayilan'
         );
         CREATE TABLE IF NOT EXISTS bolumler (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +64,9 @@ def db_init():
             "smtp_user": "",
             "smtp_pass": "",
             "bildirim_email": "",
-            "bildirim_aktif": "0"
+            "bildirim_aktif": "0",
+            "anket_varsayilan_gorunum": "adim",
+            "anket_gorunum_secim_goster": "1"
         }
         for k, v in defaults.items():
             c.execute("INSERT OR IGNORE INTO ayarlar VALUES (?,?)", (k, v))
@@ -237,6 +240,15 @@ def anket(anket_id):
         {s["id"]:{"kosul_soru_id":s["kosul_soru_id"],"kosul_deger":s["kosul_deger"]}
          for b in a["bolumler"] for s in b["sorular"]},
         ensure_ascii=False)
+    # Görünüm hesapla: URL param > kullanıcı tercihi > anket ayarı > sistem varsayılanı
+    varsayilan = ayar("anket_varsayilan_gorunum","adim")
+    anket_gorunum = a.get("gorunum","varsayilan")
+    efektif = varsayilan if anket_gorunum=="varsayilan" else anket_gorunum
+    url_gorunum = request.args.get("gorunum","")
+    if url_gorunum in ["adim","tek"]: efektif = url_gorunum
+    ctx["anket_gorunum"] = efektif
+    ctx["gorunum_secim_goster"] = ayar("anket_gorunum_secim_goster","1") == "1"
+    ctx["anket_varsayilan"] = varsayilan
     return render_template("anket.html",**ctx)
 
 @app.route("/tesekkur/<int:anket_id>")
@@ -399,12 +411,13 @@ def admin_anket_duzenle(aid):
 def anket_guncelle(aid):
     with db() as c:
         c.execute("""UPDATE anketler SET baslik=?,icon=?,rol=?,aktif=?,
-                     aciklama=?,baslangic_tarihi=?,bitis_tarihi=? WHERE id=?""",
+                     aciklama=?,baslangic_tarihi=?,bitis_tarihi=?,gorunum=? WHERE id=?""",
                   (request.form.get("baslik"),request.form.get("icon"),
                    request.form.get("rol"),1 if request.form.get("aktif") else 0,
                    request.form.get("aciklama",""),
                    request.form.get("baslangic_tarihi") or None,
                    request.form.get("bitis_tarihi") or None,
+                   request.form.get("gorunum","varsayilan"),
                    aid)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
@@ -498,10 +511,12 @@ def admin_ayarlar():
     if request.method=="POST":
         for k in ["okul_adi","okul_sehir","admin_sifre","tema","anasayfa_gorunum",
                   "hosgeldin_metin","alt_yazi","smtp_host","smtp_port",
-                  "smtp_user","smtp_pass","bildirim_email"]:
+                  "smtp_user","smtp_pass","bildirim_email",
+                  "anket_varsayilan_gorunum"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
         ayar_set("bildirim_aktif","1" if request.form.get("bildirim_aktif") else "0")
+        ayar_set("anket_gorunum_secim_goster","1" if request.form.get("anket_gorunum_secim_goster") else "0")
         f=request.files.get("amblem")
         if f and f.filename:
             data=f.read(); ext=f.filename.rsplit(".",1)[-1].lower()
@@ -512,6 +527,8 @@ def admin_ayarlar():
         mesaj="Ayarlar kaydedildi! ✓"
     ctx=gctx()
     ctx.update({"mesaj":mesaj,"gorunum":ayar("anasayfa_gorunum","kartlar"),
+                "anket_varsayilan_gorunum":ayar("anket_varsayilan_gorunum","adim"),
+                "anket_gorunum_secim_goster":ayar("anket_gorunum_secim_goster","1"),
                 "hosgeldin":ayar("hosgeldin_metin"),"alt_yazi":ayar("alt_yazi"),
                 "admin_sifre":ayar("admin_sifre","okul2024"),
                 "smtp_host":ayar("smtp_host"),"smtp_port":ayar("smtp_port","587"),

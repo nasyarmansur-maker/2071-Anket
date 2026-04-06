@@ -29,22 +29,34 @@
 </header>
 <main>{% block icerik %}{% endblock %}</main>
 <script>
-  // iFrame içinde çalışınca sayfanın gerçek yüksekliğini üst pencereye bildirir
-  function yukseklikGonder() {
+// ── iFrame otomatik yükseklik ──────────────────────────────────────
+// Anket sayfası iFrame içinde açıldığında üst pencereye yüksekliği bildirir.
+// Bu sayede okul sitesindeki iFrame kaydırma çubuğu olmadan tam boyutta görünür.
+(function() {
+  var son = 0;
+  function gonder() {
+    // scrollHeight bazen eksik hesaplıyor; tüm yöntemlerin maksimumunu al
     var h = Math.max(
       document.body.scrollHeight,
       document.body.offsetHeight,
-      document.documentElement.scrollHeight
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight
     );
-    window.parent.postMessage({ iframeHeight: h }, '*');
+    // Mobil klavye açıldığında küçülme olmasın diye en büyük değeri tut
+    if (h > son) son = h;
+    window.parent.postMessage({ iframeHeight: son + 80 }, '*');
   }
-  window.addEventListener('load', yukseklikGonder);
-  window.addEventListener('resize', yukseklikGonder);
-  // Sayfa içeriği değişince (form submit, tıklama vs.) tekrar gönder
-  var obs = new MutationObserver(yukseklikGonder);
+  // Sayfa yüklenince
+  if (document.readyState === 'complete') gonder();
+  else window.addEventListener('load', gonder);
+  // Ekran boyutu değişince (döndürme, klavye)
+  window.addEventListener('resize', function() { son = 0; setTimeout(gonder, 300); });
+  // DOM değişince (form submit, adım geçişi, koşullu sorular)
+  var obs = new MutationObserver(function() { setTimeout(gonder, 100); });
   obs.observe(document.body, { childList: true, subtree: true, attributes: true });
-  // Güvenlik için 500ms'de bir de kontrol et
-  setInterval(yukseklikGonder, 500);
+  // Güvenlik: 300ms'de bir kontrol et (bazı tarayıcılarda mutation tetiklenmez)
+  setInterval(gonder, 300);
+})();
 </script>
 </body>
 </html>
