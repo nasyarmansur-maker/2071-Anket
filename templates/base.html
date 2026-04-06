@@ -28,5 +28,23 @@
   </div>
 </header>
 <main>{% block icerik %}{% endblock %}</main>
+<script>
+  // iFrame içinde çalışınca sayfanın gerçek yüksekliğini üst pencereye bildirir
+  function yukseklikGonder() {
+    var h = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.scrollHeight
+    );
+    window.parent.postMessage({ iframeHeight: h }, '*');
+  }
+  window.addEventListener('load', yukseklikGonder);
+  window.addEventListener('resize', yukseklikGonder);
+  // Sayfa içeriği değişince (form submit, tıklama vs.) tekrar gönder
+  var obs = new MutationObserver(yukseklikGonder);
+  obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+  // Güvenlik için 500ms'de bir de kontrol et
+  setInterval(yukseklikGonder, 500);
+</script>
 </body>
 </html>
