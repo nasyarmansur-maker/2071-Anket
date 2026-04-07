@@ -63,78 +63,8 @@
   <!-- Anasayfa -->
   <div class="kart" style="margin-bottom:.75rem">
     <div style="font-size:15px;font-weight:700;margin-bottom:1rem">🏠 Anasayfa</div>
-    <!-- Hero Görseli -->
     <div class="alan-grubu">
-      <label class="alan-lbl">🖼️ Ana Sayfa Görseli <span style="font-size:11px;color:var(--metin-uc);font-weight:400">(header logosundan bağımsız)</span></label>
-      {% if hero_gorsel %}
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px">
-        <img src="{{ hero_gorsel }}"
-             style="width:{{ hero_gorsel_genislik }}px;max-width:100px;height:auto;
-                    border-radius:50%;object-fit:cover;border:2px solid var(--kenar)">
-        <div>
-          <div style="font-size:13px;color:var(--yesil);margin-bottom:6px">✓ Görsel yüklü</div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" name="hero_gorsel_sil" style="accent-color:var(--kirmizi)">
-            Görseli kaldır
-          </label>
-        </div>
-      </div>
-      {% endif %}
-      <input type="file" name="hero_gorsel" accept="image/*" style="font-size:13px">
-      <div style="font-size:12px;color:var(--metin-uc);margin-top:4px">
-        PNG, JPG veya GIF. Yuvarlak olarak gösterilir. Boş bırakılırsa header logosu kullanılır.
-      </div>
-    </div>
-
-    <!-- Görsel Boyutu -->
-    <div class="alan-grubu">
-      <label class="alan-lbl">📐 Görsel Boyutu (px)</label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="range" name="hero_gorsel_genislik"
-               min="60" max="200" value="{{ hero_gorsel_genislik }}"
-               style="flex:1" oninput="document.getElementById('gvDeger').textContent=this.value+'px'">
-        <span id="gvDeger" style="font-size:13px;font-weight:600;min-width:40px">{{ hero_gorsel_genislik }}px</span>
-      </div>
-    </div>
-
-    <div class="bolucek"></div>
-
-    <!-- Hero Başlık -->
-    <div class="alan-grubu">
-      <label class="alan-lbl">✏️ Ana Sayfa Başlığı <span style="font-size:11px;color:var(--metin-uc);font-weight:400">(boş bırakılırsa okul adı gösterilir)</span></label>
-      <input type="text" name="hero_baslik" value="{{ hero_baslik }}"
-             placeholder="{{ okul_adi }}">
-    </div>
-    <div class="alan-grubu">
-      <label class="alan-lbl">📐 Başlık Yazı Boyutu (px)</label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="range" name="hero_baslik_boyut"
-               min="16" max="48" value="{{ hero_baslik_boyut }}"
-               style="flex:1" oninput="document.getElementById('hbDeger').textContent=this.value+'px'">
-        <span id="hbDeger" style="font-size:13px;font-weight:600;min-width:40px">{{ hero_baslik_boyut }}px</span>
-      </div>
-    </div>
-
-    <!-- Hero Alt Başlık -->
-    <div class="alan-grubu">
-      <label class="alan-lbl">✏️ Ana Sayfa Alt Başlığı <span style="font-size:11px;color:var(--metin-uc);font-weight:400">(boş bırakılırsa karşılama metni gösterilir)</span></label>
-      <textarea name="hero_alt_baslik" rows="2"
-                placeholder="{{ hosgeldin }}">{{ hero_alt_baslik }}</textarea>
-    </div>
-    <div class="alan-grubu">
-      <label class="alan-lbl">📐 Alt Başlık Yazı Boyutu (px)</label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="range" name="hero_alt_boyut"
-               min="12" max="28" value="{{ hero_alt_boyut }}"
-               style="flex:1" oninput="document.getElementById('abDeger').textContent=this.value+'px'">
-        <span id="abDeger" style="font-size:13px;font-weight:600;min-width:40px">{{ hero_alt_boyut }}px</span>
-      </div>
-    </div>
-
-    <div class="bolucek"></div>
-
-    <div class="alan-grubu">
-      <label class="alan-lbl">Karşılama Metni <span style="font-size:11px;color:var(--metin-uc);font-weight:400">(alt başlık boşsa bu gösterilir)</span></label>
+      <label class="alan-lbl">Karşılama Metni</label>
       <textarea name="hosgeldin_metin" rows="2">{{ hosgeldin }}</textarea>
     </div>
     <div class="alan-grubu">
