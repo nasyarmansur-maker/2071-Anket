@@ -91,39 +91,70 @@
       <label class="alan-lbl">📐 Görsel Boyutu (px)</label>
       <div style="display:flex;align-items:center;gap:10px">
         <input type="range" name="hero_gorsel_genislik"
-               min="60" max="260" value="{{ hero_gorsel_genislik }}"
+               min="60" max="600" value="{{ hero_gorsel_genislik }}"
                style="flex:1" oninput="document.getElementById('gvDeger').textContent=this.value+'px'">
         <span id="gvDeger" style="font-size:13px;font-weight:600;min-width:40px">{{ hero_gorsel_genislik }}px</span>
       </div>
     </div>
 
-    <!-- Görsel Şekli -->
+    <!-- Görsel Boyutu Modu -->
     <div class="alan-grubu">
-      <label class="alan-lbl">🔷 Görsel Şekli</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-        {% for sv,sl,ss in [
-          ("yuvarlak","Yuvarlak","border-radius:50%"),
-          ("oval","Oval","border-radius:40% / 50%"),
-          ("kose_yuvarlak","Köşe Yuvarlak","border-radius:16px"),
-          ("normal","Normal (Kare)","border-radius:0")
-        ] %}
-        <label style="cursor:pointer;text-align:center">
-          <input type="radio" name="hero_gorsel_sekil" value="{{ sv }}"
-                 {% if (hero_gorsel_sekil or 'yuvarlak')==sv %}checked{% endif %}
-                 style="display:none" onchange="onaylaSecim()">
-          <div style="border:2px solid {% if (hero_gorsel_sekil or 'yuvarlak')==sv %}var(--ana){% else %}var(--kenar){% endif %};
-               border-radius:var(--r);padding:8px 12px;min-width:90px;transition:all .15s">
-            <div style="width:40px;height:40px;background:var(--ana-ac);margin:0 auto 6px;
-                        {{ ss }};border:2px solid var(--ana-orta)"></div>
-            <div style="font-size:12px;font-weight:{% if (hero_gorsel_sekil or 'yuvarlak')==sv %}700{% else %}500{% endif %};
-                 color:{% if (hero_gorsel_sekil or 'yuvarlak')==sv %}var(--ana){% else %}var(--metin-ik){% endif %}">
-              {{ sl }}
-            </div>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+        <input type="checkbox" name="hero_gorsel_orijinal" value="1"
+               {% if hero_gorsel_orijinal=='1' %}checked{% endif %}
+               id="orijinalCb"
+               style="width:18px;height:18px;accent-color:var(--ana);margin-top:2px;flex-shrink:0"
+               onchange="orijinalToggle()">
+        <div>
+          <div style="font-size:14px;font-weight:500">Orijinal boyutta göster</div>
+          <div style="font-size:12px;color:var(--metin-ik);margin-top:2px">
+            Açıksa görsel kırpılmaz, orijinal en-boy oranı korunur.
+            Kapalıysa aşağıdaki boyut ve şekil ayarları uygulanır.
           </div>
-        </label>
-        {% endfor %}
+        </div>
+      </label>
+    </div>
+
+    <!-- Boyut + Şekil (orijinal kapalıyken aktif) -->
+    <div id="sekliKap" style="{% if hero_gorsel_orijinal=='1' %}opacity:.4;pointer-events:none{% endif %}">
+      <!-- Görsel Şekli -->
+      <div class="alan-grubu">
+        <label class="alan-lbl">🔷 Görsel Şekli</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          {% for sv,sl,ss in [
+            ("yuvarlak","Yuvarlak","border-radius:50%"),
+            ("oval","Oval","border-radius:40% / 50%"),
+            ("kose_yuvarlak","Köşe Yuvarlak","border-radius:16px"),
+            ("normal","Normal (Kare)","border-radius:0")
+          ] %}
+          <label style="cursor:pointer;text-align:center">
+            <input type="radio" name="hero_gorsel_sekil" value="{{ sv }}"
+                   {% if (hero_gorsel_sekil or 'yuvarlak')==sv %}checked{% endif %}
+                   style="display:none">
+            <div class="sekil-kart" data-val="{{ sv }}"
+                 style="border:2px solid {% if (hero_gorsel_sekil or 'yuvarlak')==sv %}var(--ana){% else %}var(--kenar){% endif %};
+                 border-radius:var(--r);padding:8px 12px;min-width:90px;transition:all .15s">
+              <div style="width:40px;height:40px;background:var(--ana-ac);margin:0 auto 6px;
+                          {{ ss }};border:2px solid var(--ana-orta)"></div>
+              <div style="font-size:12px;font-weight:{% if (hero_gorsel_sekil or 'yuvarlak')==sv %}700{% else %}500{% endif %};
+                   color:{% if (hero_gorsel_sekil or 'yuvarlak')==sv %}var(--ana){% else %}var(--metin-ik){% endif %}">
+                {{ sl }}
+              </div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
       </div>
     </div>
+
+    <script>
+    function orijinalToggle() {
+      var cb = document.getElementById('orijinalCb');
+      var kap = document.getElementById('sekliKap');
+      kap.style.opacity = cb.checked ? '.4' : '1';
+      kap.style.pointerEvents = cb.checked ? 'none' : '';
+    }
+    </script>
 
     <div class="bolucek"></div>
 

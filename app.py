@@ -72,6 +72,7 @@ def db_init():
             "hero_gorsel": "",
             "hero_gorsel_genislik": "120",
             "hero_gorsel_sekil": "yuvarlak",
+            "hero_gorsel_orijinal": "0",
             "hero_baslik_boyut": "28",
             "hero_alt_boyut": "16"
         }
@@ -214,6 +215,7 @@ def anasayfa():
     ctx["hero_gorsel"]=ayar("hero_gorsel")
     ctx["hero_gorsel_genislik"]=ayar("hero_gorsel_genislik","120")
     ctx["hero_gorsel_sekil"]=ayar("hero_gorsel_sekil","yuvarlak")
+    ctx["hero_gorsel_orijinal"]=ayar("hero_gorsel_orijinal","0")
     ctx["hero_baslik_boyut"]=ayar("hero_baslik_boyut","28")
     ctx["hero_alt_boyut"]=ayar("hero_alt_boyut","16")
     ctx["gorunum"]=ayar("anasayfa_gorunum","kartlar")
@@ -528,7 +530,7 @@ def admin_ayarlar():
                   "smtp_user","smtp_pass","bildirim_email",
                   "anket_varsayilan_gorunum",
                   "hero_baslik","hero_alt_baslik",
-                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut"]:
+                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_gorsel_orijinal","hero_baslik_boyut","hero_alt_boyut"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
         ayar_set("bildirim_aktif","1" if request.form.get("bildirim_aktif") else "0")
@@ -558,6 +560,7 @@ def admin_ayarlar():
                 "hero_gorsel":ayar("hero_gorsel"),
                 "hero_gorsel_genislik":ayar("hero_gorsel_genislik","120"),
                 "hero_gorsel_sekil":ayar("hero_gorsel_sekil","yuvarlak"),
+                "hero_gorsel_orijinal":ayar("hero_gorsel_orijinal","0"),
                 "hero_baslik_boyut":ayar("hero_baslik_boyut","28"),
                 "hero_alt_boyut":ayar("hero_alt_boyut","16"),
                 "hosgeldin":ayar("hosgeldin_metin"),"alt_yazi":ayar("alt_yazi"),

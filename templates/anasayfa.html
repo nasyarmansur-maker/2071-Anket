@@ -6,20 +6,28 @@
 
     <!-- Hero Görseli (amblemden bağımsız, ayrıca yüklenebilir) -->
     {% if hero_gorsel %}
-      {% if hero_gorsel_sekil == "yuvarlak" %}
-        {% set radius = "50%" %}
-      {% elif hero_gorsel_sekil == "oval" %}
-        {% set radius = "40% / 50%" %}
-      {% elif hero_gorsel_sekil == "kose_yuvarlak" %}
-        {% set radius = "16px" %}
+      {% if hero_gorsel_orijinal == "1" %}
+        {# Orijinal boyut: sadece max-width sınırı, şekil yok #}
+        <img src="{{ hero_gorsel }}"
+             style="max-width:min({{ hero_gorsel_genislik }}px, 90%);height:auto;
+                    display:block;margin:0 auto 14px;"
+             alt="Okul Görseli">
       {% else %}
-        {% set radius = "0" %}
+        {% if hero_gorsel_sekil == "yuvarlak" %}
+          {% set radius = "50%" %}
+        {% elif hero_gorsel_sekil == "oval" %}
+          {% set radius = "40% / 50%" %}
+        {% elif hero_gorsel_sekil == "kose_yuvarlak" %}
+          {% set radius = "16px" %}
+        {% else %}
+          {% set radius = "0" %}
+        {% endif %}
+        <img src="{{ hero_gorsel }}"
+             style="width:{{ hero_gorsel_genislik }}px;max-width:90%;height:auto;
+                    border-radius:{{ radius }};object-fit:cover;margin-bottom:14px;
+                    border:{% if hero_gorsel_sekil != 'normal' %}3px solid var(--ana-ac){% else %}none{% endif %}"
+             alt="Okul Görseli">
       {% endif %}
-      <img src="{{ hero_gorsel }}"
-           style="width:{{ hero_gorsel_genislik }}px;max-width:90%;height:auto;
-                  border-radius:{{ radius }};object-fit:cover;margin-bottom:14px;
-                  border:{% if hero_gorsel_sekil != 'normal' %}3px solid var(--ana-ac){% else %}none{% endif %}"
-           alt="Okul Görseli">
     {% elif amblem %}
       <img src="{{ amblem }}" class="hero-amblem" alt="Okul Amblemi">
     {% endif %}
