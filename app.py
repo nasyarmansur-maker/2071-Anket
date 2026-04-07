@@ -66,7 +66,14 @@ def db_init():
             "bildirim_email": "",
             "bildirim_aktif": "0",
             "anket_varsayilan_gorunum": "adim",
-            "anket_gorunum_secim_goster": "1"
+            "anket_gorunum_secim_goster": "1",
+            "hero_baslik": "",
+            "hero_alt_baslik": "",
+            "hero_gorsel": "",
+            "hero_gorsel_genislik": "120",
+            "hero_gorsel_sekil": "yuvarlak",
+            "hero_baslik_boyut": "28",
+            "hero_alt_boyut": "16"
         }
         for k, v in defaults.items():
             c.execute("INSERT OR IGNORE INTO ayarlar VALUES (?,?)", (k, v))
@@ -202,6 +209,13 @@ def anasayfa():
         liste.append(ad)
     ctx=gctx(); ctx["anketler"]=liste
     ctx["hosgeldin"]=ayar("hosgeldin_metin"); ctx["alt_yazi"]=ayar("alt_yazi")
+    ctx["hero_baslik"]=ayar("hero_baslik")
+    ctx["hero_alt_baslik"]=ayar("hero_alt_baslik")
+    ctx["hero_gorsel"]=ayar("hero_gorsel")
+    ctx["hero_gorsel_genislik"]=ayar("hero_gorsel_genislik","120")
+    ctx["hero_gorsel_sekil"]=ayar("hero_gorsel_sekil","yuvarlak")
+    ctx["hero_baslik_boyut"]=ayar("hero_baslik_boyut","28")
+    ctx["hero_alt_boyut"]=ayar("hero_alt_boyut","16")
     ctx["gorunum"]=ayar("anasayfa_gorunum","kartlar")
     return render_template("anasayfa.html",**ctx)
 
@@ -512,7 +526,9 @@ def admin_ayarlar():
         for k in ["okul_adi","okul_sehir","admin_sifre","tema","anasayfa_gorunum",
                   "hosgeldin_metin","alt_yazi","smtp_host","smtp_port",
                   "smtp_user","smtp_pass","bildirim_email",
-                  "anket_varsayilan_gorunum"]:
+                  "anket_varsayilan_gorunum",
+                  "hero_baslik","hero_alt_baslik",
+                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
         ayar_set("bildirim_aktif","1" if request.form.get("bildirim_aktif") else "0")
@@ -524,11 +540,26 @@ def admin_ayarlar():
             ayar_set("amblem",f"data:{mime};base64,{base64.b64encode(data).decode()}")
         elif request.form.get("amblem_sil"):
             ayar_set("amblem","")
+        # Hero görseli
+        fg=request.files.get("hero_gorsel")
+        if fg and fg.filename:
+            data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
+            mime="image/png" if ext=="png" else "image/jpeg" if ext in ["jpg","jpeg"] else "image/gif"
+            ayar_set("hero_gorsel",f"data:{mime};base64,{base64.b64encode(data).decode()}")
+        elif request.form.get("hero_gorsel_sil"):
+            ayar_set("hero_gorsel","")
         mesaj="Ayarlar kaydedildi! ✓"
     ctx=gctx()
     ctx.update({"mesaj":mesaj,"gorunum":ayar("anasayfa_gorunum","kartlar"),
                 "anket_varsayilan_gorunum":ayar("anket_varsayilan_gorunum","adim"),
                 "anket_gorunum_secim_goster":ayar("anket_gorunum_secim_goster","1"),
+                "hero_baslik":ayar("hero_baslik"),
+                "hero_alt_baslik":ayar("hero_alt_baslik"),
+                "hero_gorsel":ayar("hero_gorsel"),
+                "hero_gorsel_genislik":ayar("hero_gorsel_genislik","120"),
+                "hero_gorsel_sekil":ayar("hero_gorsel_sekil","yuvarlak"),
+                "hero_baslik_boyut":ayar("hero_baslik_boyut","28"),
+                "hero_alt_boyut":ayar("hero_alt_boyut","16"),
                 "hosgeldin":ayar("hosgeldin_metin"),"alt_yazi":ayar("alt_yazi"),
                 "admin_sifre":ayar("admin_sifre","okul2024"),
                 "smtp_host":ayar("smtp_host"),"smtp_port":ayar("smtp_port","587"),

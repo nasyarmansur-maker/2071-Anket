@@ -3,46 +3,90 @@
 {% block icerik %}
 <div class="kap">
   <div class="hero">
-    {% if amblem %}
+
+    <!-- Hero Görseli (amblemden bağımsız, ayrıca yüklenebilir) -->
+    {% if hero_gorsel %}
+      {% if hero_gorsel_sekil == "yuvarlak" %}
+        {% set radius = "50%" %}
+      {% elif hero_gorsel_sekil == "oval" %}
+        {% set radius = "40% / 50%" %}
+      {% elif hero_gorsel_sekil == "kose_yuvarlak" %}
+        {% set radius = "16px" %}
+      {% else %}
+        {% set radius = "0" %}
+      {% endif %}
+      <img src="{{ hero_gorsel }}"
+           style="width:{{ hero_gorsel_genislik }}px;max-width:90%;height:auto;
+                  border-radius:{{ radius }};object-fit:cover;margin-bottom:14px;
+                  border:{% if hero_gorsel_sekil != 'normal' %}3px solid var(--ana-ac){% else %}none{% endif %}"
+           alt="Okul Görseli">
+    {% elif amblem %}
       <img src="{{ amblem }}" class="hero-amblem" alt="Okul Amblemi">
     {% endif %}
-    <h1>{{ okul_adi }}</h1>
-    <p>{{ hosgeldin }}</p>
+
+    <!-- Hero Başlık (boşsa okul adı göster) -->
+    <h1 style="font-size:{{ hero_baslik_boyut }}px;font-weight:800;margin-bottom:6px">
+      {{ hero_baslik if hero_baslik else okul_adi }}
+    </h1>
+
+    <!-- Hero Alt Başlık (boşsa hosgeldin metni göster) -->
+    <p style="font-size:{{ hero_alt_boyut }}px;color:var(--metin-ik);
+              max-width:520px;margin:0 auto">
+      {{ hero_alt_baslik if hero_alt_baslik else hosgeldin }}
+    </p>
   </div>
 
   {% if gorunum == "liste" %}
   <div class="rol-liste">
     {% for a in anketler %}
+    {% if a.simdiki_aktif %}
     <a href="/anket/{{ a.id }}" class="rol-kart" style="margin-bottom:10px">
       <div class="icon">{{ a.icon }}</div>
-      <div class="ic">
-        <h2>{{ a.baslik }}</h2>
-        <p>Ankete katılmak için tıklayın</p>
-      </div>
+      <div class="ic"><h2>{{ a.baslik }}</h2><p>Ankete katılmak için tıklayın</p></div>
       <span class="ok">Başla →</span>
     </a>
+    {% else %}
+    <div class="rol-kart" style="margin-bottom:10px;opacity:.5;cursor:not-allowed">
+      <div class="icon">{{ a.icon }}</div>
+      <div class="ic"><h2>{{ a.baslik }}</h2><p style="color:var(--kirmizi)">{{ a.mesaj }}</p></div>
+    </div>
+    {% endif %}
     {% endfor %}
   </div>
 
   {% elif gorunum == "minimal" %}
-  <div style="max-width:400px;margin:0 auto">
+  <div style="max-width:420px;margin:0 auto">
     {% for a in anketler %}
-    <a href="/anket/{{ a.id }}" class="btn btn-ana btn-tam" style="margin-bottom:10px;padding:14px;font-size:16px">
+    {% if a.simdiki_aktif %}
+    <a href="/anket/{{ a.id }}" class="btn btn-ana btn-tam"
+       style="margin-bottom:10px;padding:14px;font-size:16px">
       {{ a.icon }} {{ a.baslik }}
     </a>
+    {% else %}
+    <div class="btn btn-gri btn-tam" style="margin-bottom:10px;padding:14px;opacity:.5;cursor:not-allowed">
+      {{ a.icon }} {{ a.baslik }} — {{ a.mesaj }}
+    </div>
+    {% endif %}
     {% endfor %}
   </div>
 
   {% else %}
-  {# Varsayılan: kartlar #}
   <div class="rol-grid">
     {% for a in anketler %}
+    {% if a.simdiki_aktif %}
     <a href="/anket/{{ a.id }}" class="rol-kart">
       <span class="icon">{{ a.icon }}</span>
       <h2>{{ a.baslik }}</h2>
       <p>Ankete katılmak için tıklayın</p>
       <span class="ok">Başla →</span>
     </a>
+    {% else %}
+    <div class="rol-kart" style="opacity:.5;cursor:not-allowed">
+      <span class="icon">{{ a.icon }}</span>
+      <h2>{{ a.baslik }}</h2>
+      <p style="color:var(--kirmizi)">{{ a.mesaj }}</p>
+    </div>
+    {% endif %}
     {% endfor %}
   </div>
   {% endif %}
@@ -51,6 +95,8 @@
   <div class="bos-durum">Henüz aktif anket bulunmuyor.</div>
   {% endif %}
 
-  <p style="text-align:center;font-size:12px;color:var(--metin-uc);margin-top:1.5rem">{{ alt_yazi }}</p>
+  <p style="text-align:center;font-size:12px;color:var(--metin-uc);margin-top:1.5rem">
+    {{ alt_yazi }}
+  </p>
 </div>
 {% endblock %}
