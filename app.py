@@ -530,10 +530,11 @@ def admin_ayarlar():
                   "smtp_user","smtp_pass","bildirim_email",
                   "anket_varsayilan_gorunum",
                   "hero_baslik","hero_alt_baslik",
-                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_gorsel_orijinal","hero_baslik_boyut","hero_alt_boyut"]:
+                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
         ayar_set("bildirim_aktif","1" if request.form.get("bildirim_aktif") else "0")
+        ayar_set("hero_gorsel_orijinal","1" if request.form.get("hero_gorsel_orijinal") else "0")
         ayar_set("anket_gorunum_secim_goster","1" if request.form.get("anket_gorunum_secim_goster") else "0")
         f=request.files.get("amblem")
         if f and f.filename:
