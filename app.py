@@ -33,7 +33,8 @@ def db_init():
         );
         CREATE TABLE IF NOT EXISTS bolumler (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            anket_id INTEGER NOT NULL, baslik TEXT NOT NULL, sira INTEGER DEFAULT 0
+            anket_id INTEGER NOT NULL, baslik TEXT NOT NULL, sira INTEGER DEFAULT 0,
+            aktif INTEGER DEFAULT 1
         );
         CREATE TABLE IF NOT EXISTS sorular (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,7 +43,8 @@ def db_init():
             secenekler TEXT DEFAULT '[]',
             zorunlu INTEGER DEFAULT 1, sira INTEGER DEFAULT 0,
             kosul_soru_id INTEGER DEFAULT NULL,
-            kosul_deger TEXT DEFAULT NULL
+            kosul_deger TEXT DEFAULT NULL,
+            aktif INTEGER DEFAULT 1
         );
         CREATE TABLE IF NOT EXISTS yanitlar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -251,6 +253,11 @@ def anket(anket_id):
             f"<p><b>Tarih:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}</p>"
         )
         return redirect(url_for("tesekkur",anket_id=anket_id))
+    # Sadece aktif bölüm ve soruları filtrele
+    a["bolumler"] = [b for b in a["bolumler"] if b.get("aktif",1)!=0]
+    for b in a["bolumler"]:
+        b["sorular"] = [s for s in b["sorular"] if s.get("aktif",1)!=0]
+    a["bolumler"] = [b for b in a["bolumler"] if b["sorular"] or True]
     ctx=gctx(); ctx["anket"]=a
     ctx["sorular_json"]=json.dumps(
         {s["id"]:{"kosul_soru_id":s["kosul_soru_id"],"kosul_deger":s["kosul_deger"]}
@@ -463,7 +470,8 @@ def bolum_ekle():
 def bolum_guncelle(bid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        c.execute("UPDATE bolumler SET baslik=? WHERE id=?",(request.form.get("baslik"),bid)); c.commit()
+        c.execute("UPDATE bolumler SET baslik=?,aktif=? WHERE id=?",
+                  (request.form.get("baslik"),1 if request.form.get("bolum_aktif") else 0,bid)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/bolum/<int:bid>/sil",methods=["POST"])
@@ -487,8 +495,8 @@ def soru_ekle():
     if kosul_sid: kosul_sid=int(kosul_sid)
     with db() as c:
         c.execute("""INSERT INTO sorular
-                  (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger)
-                  VALUES (?,?,?,?,?,99,?,?)""",
+                  (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger,aktif)
+                  VALUES (?,?,?,?,?,99,?,?,1)""",
                   (bid,request.form.get("metin","Yeni soru?"),tip,
                    json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
@@ -505,10 +513,12 @@ def soru_guncelle(sid):
     if kosul_sid: kosul_sid=int(kosul_sid)
     with db() as c:
         c.execute("""UPDATE sorular SET metin=?,tip=?,secenekler=?,zorunlu=?,
-                     kosul_soru_id=?,kosul_deger=? WHERE id=?""",
+                     kosul_soru_id=?,kosul_deger=?,aktif=? WHERE id=?""",
                   (request.form.get("metin"),tip,json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
-                   kosul_sid,kosul_deg,sid)); c.commit()
+                   kosul_sid,kosul_deg,
+                   1 if request.form.get("soru_aktif") else 0,
+                   sid)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/sil",methods=["POST"])

@@ -82,10 +82,15 @@
 <div class="bolum-edit">
   <div class="bolum-edit-baslik">
     <form method="POST" action="/admin/bolum/{{ bolum.id }}/guncelle"
-          style="display:flex;gap:6px;align-items:center;flex:1;min-width:0">
+          style="display:flex;gap:6px;align-items:center;flex:1;min-width:0;flex-wrap:wrap">
       <input type="hidden" name="anket_id" value="{{ anket.id }}">
-      <input type="text" name="baslik" value="{{ bolum.baslik }}" style="flex:1;font-weight:700">
-      <button type="submit" class="btn btn-gri btn-kucuk">✓</button>
+      <input type="text" name="baslik" value="{{ bolum.baslik }}" style="flex:1;min-width:120px;font-weight:700">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" name="bolum_aktif" {% if bolum.get('aktif',1) != 0 %}checked{% endif %}
+               style="accent-color:var(--ana);width:15px;height:15px">
+        <span>Aktif</span>
+      </label>
+      <button type="submit" class="btn btn-gri btn-kucuk">✓ Kaydet</button>
     </form>
     <form method="POST" action="/admin/bolum/{{ bolum.id }}/sil"
           onsubmit="return confirm('Bölüm ve tüm sorular silinecek. Emin misiniz?')">
@@ -95,7 +100,7 @@
   </div>
 
   {% for soru in bolum.sorular %}
-  <div class="soru-item">
+  <div class="soru-item" style="{% if soru.get('aktif',1) == 0 %}opacity:.45;{% endif %}">
     <div class="soru-item-ust">
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:500">{{ soru.metin }}</div>
@@ -105,7 +110,10 @@
         </div>
         {% endif %}
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0">
+      <div style="display:flex;gap:5px;flex-shrink:0;flex-wrap:wrap">
+        {% if soru.get('aktif',1) == 0 %}
+        <span class="badge badge-gri">⏸ Pasif</span>
+        {% endif %}
         <span class="soru-tip-badge tip-{{ soru.tip }}">
           {% if soru.tip=='yildiz' %}⭐{% elif soru.tip=='secim' %}🔘{% elif soru.tip=='coklu' %}☑️{% elif soru.tip=='evet_hayir' %}👍{% elif soru.tip=='sayi' %}🔢{% else %}📝{% endif %}
           {{ {'yildiz':'Yıldız','secim':'Seçim','coklu':'Çoklu','metin':'Metin','sayi':'Sayı','evet_hayir':'E/H'}.get(soru.tip, soru.tip) }}
@@ -187,7 +195,7 @@
         <label class="alan-lbl">Bu cevap seçilince göster:</label>
         <select name="kosul_deger" id="seKosulDegerSec"></select>
       </div>
-      <div class="alan-grubu">
+      <div style="display:flex;gap:16px;flex-wrap:wrap" class="alan-grubu">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
           <input type="checkbox" name="zorunlu" checked style="width:18px;height:18px;accent-color:var(--ana)">
           Zorunlu soru
@@ -240,10 +248,14 @@
         <label class="alan-lbl">Bu cevap seçilince göster:</label>
         <select name="kosul_deger" id="sdKosulDegerSec"></select>
       </div>
-      <div class="alan-grubu">
+      <div style="display:flex;gap:16px;flex-wrap:wrap" class="alan-grubu">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
           <input type="checkbox" name="zorunlu" id="sdZorunlu"
                  style="width:18px;height:18px;accent-color:var(--ana)"> Zorunlu soru
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" name="soru_aktif" id="sdAktif"
+                 style="width:18px;height:18px;accent-color:var(--yesil)"> Aktif (ankette görünsün)
         </label>
       </div>
       <button type="submit" class="btn btn-ana btn-tam">Değişiklikleri Kaydet</button>
@@ -283,6 +295,8 @@ function soruDuzenle(sid, soru) {
   }
   document.getElementById('sdKosulSid').value = soru.kosul_soru_id || '';
   kosulSecenekDoldur('sd', soru.kosul_deger);
+  var aktifCb = document.getElementById('sdAktif');
+  if(aktifCb) aktifCb.checked = soru.aktif !== 0;
   tipDegis('sd');
   modalAc('soruDuzenleModal');
 }
