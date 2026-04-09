@@ -34,7 +34,7 @@ def db_init():
         CREATE TABLE IF NOT EXISTS bolumler (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             anket_id INTEGER NOT NULL, baslik TEXT NOT NULL, sira INTEGER DEFAULT 0,
-            aktif INTEGER DEFAULT 1
+            aktif INTEGER DEFAULT 1, gorsel TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS sorular (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +44,7 @@ def db_init():
             zorunlu INTEGER DEFAULT 1, sira INTEGER DEFAULT 0,
             kosul_soru_id INTEGER DEFAULT NULL,
             kosul_deger TEXT DEFAULT NULL,
-            aktif INTEGER DEFAULT 1
+            aktif INTEGER DEFAULT 1, gorsel TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS yanitlar (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -470,8 +470,19 @@ def bolum_ekle():
 def bolum_guncelle(bid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        c.execute("UPDATE bolumler SET baslik=?,aktif=? WHERE id=?",
-                  (request.form.get("baslik"),1 if request.form.get("bolum_aktif") else 0,bid)); c.commit()
+        gorsel_mevcut = c.execute("SELECT gorsel FROM bolumler WHERE id=?",(bid,)).fetchone()
+        gorsel_mevcut = gorsel_mevcut["gorsel"] if gorsel_mevcut else ""
+        fg=request.files.get("bolum_gorsel")
+        if fg and fg.filename:
+            import base64 as _b64
+            data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
+            mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
+            gorsel_mevcut=f"data:{mime};base64,{_b64.b64encode(data).decode()}"
+        elif request.form.get("bolum_gorsel_sil"):
+            gorsel_mevcut=""
+        c.execute("UPDATE bolumler SET baslik=?,aktif=?,gorsel=? WHERE id=?",
+                  (request.form.get("baslik"),1 if request.form.get("bolum_aktif") else 0,
+                   gorsel_mevcut, bid)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/bolum/<int:bid>/sil",methods=["POST"])
@@ -493,14 +504,21 @@ def soru_ekle():
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
+    # Görsel yükleme
+    gorsel=""
+    fg=request.files.get("soru_gorsel")
+    if fg and fg.filename:
+        data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
+        mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
+        gorsel=f"data:{mime};base64,{base64.b64encode(data).decode()}"
     with db() as c:
         c.execute("""INSERT INTO sorular
-                  (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger,aktif)
-                  VALUES (?,?,?,?,?,99,?,?,1)""",
+                  (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger,aktif,gorsel)
+                  VALUES (?,?,?,?,?,99,?,?,1,?)""",
                   (bid,request.form.get("metin","Yeni soru?"),tip,
                    json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
-                   kosul_sid,kosul_deg)); c.commit()
+                   kosul_sid,kosul_deg,gorsel)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/guncelle",methods=["POST"])
@@ -512,13 +530,24 @@ def soru_guncelle(sid):
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
     with db() as c:
+        # Görsel yükleme
+        gorsel_mevcut = c.execute("SELECT gorsel FROM sorular WHERE id=?",(sid,)).fetchone()["gorsel"] or ""
+        fg=request.files.get("soru_gorsel_"+str(sid))
+        if not fg: fg=request.files.get("soru_gorsel")
+        if fg and fg.filename:
+            import base64 as _b64
+            data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
+            mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
+            gorsel_mevcut=f"data:{mime};base64,{_b64.b64encode(data).decode()}"
+        elif request.form.get("soru_gorsel_sil"):
+            gorsel_mevcut=""
         c.execute("""UPDATE sorular SET metin=?,tip=?,secenekler=?,zorunlu=?,
-                     kosul_soru_id=?,kosul_deger=?,aktif=? WHERE id=?""",
+                     kosul_soru_id=?,kosul_deger=?,aktif=?,gorsel=? WHERE id=?""",
                   (request.form.get("metin"),tip,json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
                    kosul_sid,kosul_deg,
                    1 if request.form.get("soru_aktif") else 0,
-                   sid)); c.commit()
+                   gorsel_mevcut, sid)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/sil",methods=["POST"])
@@ -527,6 +556,46 @@ def soru_sil(sid):
     aid=int(request.form["anket_id"])
     with db() as c:
         c.execute("DELETE FROM sorular WHERE id=?",(sid,)); c.commit()
+    return redirect(url_for("admin_anket_duzenle",aid=aid))
+
+# ── Sıralama ─────────────────────────────────────────────────────
+@app.route("/admin/bolum/<int:bid>/sira",methods=["POST"])
+@giris_gerekli
+def bolum_sira(bid):
+    aid=int(request.form["anket_id"])
+    yon=request.form.get("yon","asagi")
+    with db() as con:
+        row=con.execute("SELECT sira FROM bolumler WHERE id=?",(bid,)).fetchone()
+        if not row: return redirect(url_for("admin_anket_duzenle",aid=aid))
+        mevcut=row["sira"]
+        if yon=="yukari":
+            hedef=con.execute("SELECT id,sira FROM bolumler WHERE anket_id=? AND sira<? ORDER BY sira DESC LIMIT 1",(aid,mevcut)).fetchone()
+        else:
+            hedef=con.execute("SELECT id,sira FROM bolumler WHERE anket_id=? AND sira>? ORDER BY sira ASC LIMIT 1",(aid,mevcut)).fetchone()
+        if hedef:
+            con.execute("UPDATE bolumler SET sira=? WHERE id=?",(hedef["sira"],bid))
+            con.execute("UPDATE bolumler SET sira=? WHERE id=?",(mevcut,hedef["id"]))
+            con.commit()
+    return redirect(url_for("admin_anket_duzenle",aid=aid))
+
+@app.route("/admin/soru/<int:sid>/sira",methods=["POST"])
+@giris_gerekli
+def soru_sira(sid):
+    aid=int(request.form["anket_id"])
+    bid=int(request.form["bolum_id"])
+    yon=request.form.get("yon","asagi")
+    with db() as con:
+        row=con.execute("SELECT sira FROM sorular WHERE id=?",(sid,)).fetchone()
+        if not row: return redirect(url_for("admin_anket_duzenle",aid=aid))
+        mevcut=row["sira"]
+        if yon=="yukari":
+            hedef=con.execute("SELECT id,sira FROM sorular WHERE bolum_id=? AND sira<? ORDER BY sira DESC LIMIT 1",(bid,mevcut)).fetchone()
+        else:
+            hedef=con.execute("SELECT id,sira FROM sorular WHERE bolum_id=? AND sira>? ORDER BY sira ASC LIMIT 1",(bid,mevcut)).fetchone()
+        if hedef:
+            con.execute("UPDATE sorular SET sira=? WHERE id=?",(hedef["sira"],sid))
+            con.execute("UPDATE sorular SET sira=? WHERE id=?",(mevcut,hedef["id"]))
+            con.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/toggle_aktif",methods=["POST"])
