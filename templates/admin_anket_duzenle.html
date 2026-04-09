@@ -10,27 +10,25 @@
 .modal-kapat{background:none;border:none;font-size:24px;cursor:pointer;color:var(--gri);line-height:1;padding:0 4px}
 .secenek-satir{display:flex;gap:6px;margin-bottom:6px}
 .secenek-satir input{flex:1}
-.bolum-edit{background:var(--yuzey);border:1.5px solid var(--kenar);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem}
-.bolum-edit-baslik{display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap}
-.soru-item{background:var(--gri-ac);border:1px solid var(--kenar);border-radius:var(--r);padding:10px 12px;margin-bottom:8px}
+.bolum-blok{background:var(--yuzey);border:1.5px solid var(--kenar);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem}
+.bolum-blok.pasif{opacity:.5}
+.soru-item{background:var(--gri-ac);border:1px solid var(--kenar);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
 .soru-item.pasif{opacity:.4}
-.soru-ust{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.soru-islemler{display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;align-items:center}
+.sira-btn{background:var(--yuzey);border:1px solid var(--kenar);border-radius:4px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--metin-ik)}
+.sira-btn:hover{background:var(--ana-ac);border-color:var(--ana);color:var(--ana)}
 .soru-tip-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
 .tip-yildiz{background:#fff8e8;color:#854F0B}
 .tip-secim{background:#e8f0ff;color:#185FA5}
 .tip-coklu{background:#e8f5e8;color:#3B6D11}
-.tip-metin{background:#f0f8e8;color:#3B6D11}
-.tip-sayi{background:#fef3e8;color:#854F0B}
+.tip-metin,.tip-sayi{background:#f0f8e8;color:#3B6D11}
 .tip-evet_hayir{background:#fde8f5;color:#6c3483}
-.sira-btn{background:var(--yuzey);border:1px solid var(--kenar);border-radius:4px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--metin-ik);transition:all .12s}
-.sira-btn:hover{background:var(--ana-ac);border-color:var(--ana);color:var(--ana)}
-.gorsel-kucuk{width:48px;height:48px;object-fit:cover;border-radius:var(--r);border:1px solid var(--kenar);flex-shrink:0}
-.btn-aktif{background:var(--yesil-ac);color:var(--yesil);border:1px solid var(--yesil)}
-.btn-pasif-s{background:var(--gri-ac);color:var(--gri);border:1px solid var(--kenar)}
+.btn-aktif-s{background:var(--yesil-ac)!important;color:var(--yesil)!important;border-color:var(--yesil)!important}
+.btn-pasif-s{background:var(--gri-ac)!important;color:var(--gri)!important;border-color:var(--kenar)!important}
+.gorsel-kucuk{width:44px;height:44px;object-fit:cover;border-radius:var(--r);border:1px solid var(--kenar);flex-shrink:0}
 </style>
 {% endblock %}
 {% block admin_icerik %}
+
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
   <a href="/admin/anketler" class="btn btn-gri btn-kucuk">← Geri</a>
   <div class="sayfa-baslik" style="margin-bottom:0;flex:1">{{ anket.icon }} {{ anket.baslik }}</div>
@@ -38,6 +36,7 @@
   <a href="/admin/qr/{{ anket.id }}" class="btn btn-gri btn-kucuk">📱 QR</a>
 </div>
 
+<!-- Anket Bilgileri -->
 <div class="kart" style="margin-bottom:1rem">
   <div style="font-size:14px;font-weight:700;margin-bottom:.75rem">⚙️ Anket Bilgileri</div>
   <form method="POST" action="/admin/anket/{{ anket.id }}/guncelle">
@@ -51,57 +50,101 @@
       <div style="flex:1;min-width:140px"><label class="alan-lbl">Açıklama</label><input type="text" name="aciklama" value="{{ anket.aciklama or '' }}"></div>
       <div><label class="alan-lbl">Başlangıç</label><input type="date" name="baslangic_tarihi" value="{{ anket.baslangic_tarihi or '' }}" style="width:auto"></div>
       <div><label class="alan-lbl">Bitiş</label><input type="date" name="bitis_tarihi" value="{{ anket.bitis_tarihi or '' }}" style="width:auto"></div>
-      <div><label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;height:38px"><input type="checkbox" name="aktif" {% if anket.aktif %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--ana)"> Aktif</label></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;height:38px"><input type="checkbox" name="aktif" {% if anket.aktif %}checked{% endif %} style="width:18px;height:18px;accent-color:var(--ana)"> Aktif</label>
       <button type="submit" class="btn btn-ana">💾 Kaydet</button>
     </div>
   </form>
 </div>
 
+<!-- ── Bölümler ── -->
 {% for bolum in anket.bolumler %}
-<div class="bolum-edit">
-  <div class="bolum-edit-baslik">
+<div class="bolum-blok {% if bolum.get('aktif',1)==0 %}pasif{% endif %}">
+
+  <!-- Bölüm başlık + kontroller -->
+  <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.75rem">
+
+    <!-- Sıralama -->
     <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
-      <form method="POST" action="/admin/bolum/{{ bolum.id }}/sira" style="margin:0"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="yukari"><button type="submit" class="sira-btn" title="Yukarı">▲</button></form>
-      <form method="POST" action="/admin/bolum/{{ bolum.id }}/sira" style="margin:0"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="asagi"><button type="submit" class="sira-btn" title="Aşağı">▼</button></form>
+      <form method="POST" action="/admin/bolum/{{ bolum.id }}/sira"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="yukari"><button type="submit" class="sira-btn" title="Yukarı">▲</button></form>
+      <form method="POST" action="/admin/bolum/{{ bolum.id }}/sira"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="asagi"><button type="submit" class="sira-btn" title="Aşağı">▼</button></form>
     </div>
+
+    <!-- Bölüm görseli (varsa) -->
+    {% if bolum.get('gorsel') %}
+    <img src="{{ bolum.gorsel }}" class="gorsel-kucuk">
+    {% endif %}
+
+    <!-- Başlık formu -->
     <form method="POST" action="/admin/bolum/{{ bolum.id }}/guncelle" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;flex:1;min-width:0;flex-wrap:wrap">
       <input type="hidden" name="anket_id" value="{{ anket.id }}">
-      {% if bolum.gorsel %}<input type="hidden" name="bolum_gorsel_mevcut" value="{{ bolum.gorsel }}"><img src="{{ bolum.gorsel }}" style="width:40px;height:40px;object-fit:cover;border-radius:var(--r);border:1px solid var(--kenar)"><label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" name="bolum_gorsel_sil"> Görseli Sil</label>{% else %}<label class="btn btn-gri btn-kucuk" style="cursor:pointer">🖼 Görsel<input type="file" name="bolum_gorsel" accept="image/*" style="display:none" onchange="this.form.submit()"></label>{% endif %}
-      <input type="text" name="baslik" value="{{ bolum.baslik }}" style="flex:1;min-width:120px;font-weight:700">
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" name="bolum_aktif" {% if bolum.get('aktif',1) != 0 %}checked{% endif %} style="accent-color:var(--ana);width:15px;height:15px"> Aktif</label>
-      <button type="submit" class="btn btn-gri btn-kucuk">✓ Kaydet</button>
+      <input type="text" name="baslik" value="{{ bolum.baslik }}" style="flex:1;min-width:100px;font-weight:700">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" name="bolum_aktif" {% if bolum.get('aktif',1)!=0 %}checked{% endif %} style="width:14px;height:14px;accent-color:var(--ana)"> Aktif</label>
+      <!-- Bölüm görsel yükle -->
+      <label class="btn btn-gri btn-kucuk" style="cursor:pointer;white-space:nowrap">
+        🖼 Görsel<input type="file" name="bolum_gorsel" accept="image/*" style="display:none" onchange="this.closest('form').submit()">
+      </label>
+      {% if bolum.get('gorsel') %}
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px"><input type="checkbox" name="bolum_gorsel_sil" onchange="this.closest('form').submit()"> Sil</label>
+      {% endif %}
+      <button type="submit" class="btn btn-gri btn-kucuk">✓</button>
     </form>
+
+    <!-- Bölüm sil -->
     <form method="POST" action="/admin/bolum/{{ bolum.id }}/sil" onsubmit="return confirm('Bölüm ve tüm sorular silinecek. Emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">🗑</button></form>
   </div>
 
+  <!-- Sorular -->
   {% for soru in bolum.sorular %}
-  <div class="soru-item {% if soru.get('aktif',1) == 0 %}pasif{% endif %}">
-    <div class="soru-ust">
-      <div style="display:flex;align-items:flex-start;gap:8px;flex:1;min-width:0">
-        <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;margin-top:2px">
-          <form method="POST" action="/admin/soru/{{ soru.id }}/sira" style="margin:0"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="yukari"><button type="submit" class="sira-btn">▲</button></form>
-          <form method="POST" action="/admin/soru/{{ soru.id }}/sira" style="margin:0"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="yon" value="asagi"><button type="submit" class="sira-btn">▼</button></form>
-        </div>
-        {% if soru.gorsel %}<img src="{{ soru.gorsel }}" class="gorsel-kucuk">{% endif %}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:500;line-height:1.4">{{ soru.metin }}</div>
-          {% if soru.kosul_soru_id %}<div style="font-size:11px;color:var(--turuncu);margin-top:2px">🔀 Koşullu (#{{ soru.kosul_soru_id }} = "{{ soru.kosul_deger }}")</div>{% endif %}
-          {% if soru.secenekler %}<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
-        </div>
+  <div class="soru-item {% if soru.get('aktif',1)==0 %}pasif{% endif %}">
+    <div style="display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">
+
+      <!-- Soru sıralama — bolum_id dahil -->
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0;margin-top:2px">
+        <form method="POST" action="/admin/soru/{{ soru.id }}/sira"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="bolum_id" value="{{ bolum.id }}"><input type="hidden" name="yon" value="yukari"><button type="submit" class="sira-btn">▲</button></form>
+        <form method="POST" action="/admin/soru/{{ soru.id }}/sira"><input type="hidden" name="anket_id" value="{{ anket.id }}"><input type="hidden" name="bolum_id" value="{{ bolum.id }}"><input type="hidden" name="yon" value="asagi"><button type="submit" class="sira-btn">▼</button></form>
       </div>
-      <div class="soru-islemler">
-        <span class="soru-tip-badge tip-{{ soru.tip }}">{% if soru.tip=='yildiz' %}⭐ Yıldız{% elif soru.tip=='secim' %}🔘 Seçim{% elif soru.tip=='coklu' %}☑️ Çoklu{% elif soru.tip=='evet_hayir' %}👍 E/H{% elif soru.tip=='sayi' %}🔢 Sayı{% else %}📝 Metin{% endif %}</span>
-        <form method="POST" action="/admin/soru/{{ soru.id }}/toggle_aktif" style="margin:0"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-kucuk {% if soru.get('aktif',1) != 0 %}btn-aktif{% else %}btn-pasif-s{% endif %}">{% if soru.get('aktif',1) != 0 %}✓ Aktif{% else %}⏸ Pasif{% endif %}</button></form>
-        <button class="btn btn-gri btn-kucuk" onclick="soruDuzenleAc({{ soru.id }}, {{ soru|tojson }})">✏️ Düzenle</button>
-        <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Bu soruyu silmek istediğinizden emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">✕</button></form>
+
+      <!-- Soru görseli (varsa) -->
+      {% if soru.get('gorsel') %}
+      <img src="{{ soru.gorsel }}" class="gorsel-kucuk">
+      {% endif %}
+
+      <!-- Metin + seçenekler -->
+      <div style="flex:1;min-width:100px">
+        <div style="font-size:13px;font-weight:500;line-height:1.4">{{ soru.metin }}</div>
+        {% if soru.kosul_soru_id %}<div style="font-size:11px;color:var(--turuncu);margin-top:2px">🔀 Koşullu</div>{% endif %}
+        {% if soru.secenekler %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
+      </div>
+
+      <!-- Aksiyonlar -->
+      <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;align-items:center">
+        <span class="soru-tip-badge tip-{{ soru.tip }}">{% if soru.tip=='yildiz' %}⭐{% elif soru.tip=='secim' %}🔘{% elif soru.tip=='coklu' %}☑️{% elif soru.tip=='evet_hayir' %}👍{% elif soru.tip=='sayi' %}🔢{% else %}📝{% endif %} {{ {'yildiz':'Yıldız','secim':'Seçim','coklu':'Çoklu','metin':'Metin','sayi':'Sayı','evet_hayir':'E/H'}.get(soru.tip,soru.tip) }}</span>
+        <!-- Aktif/Pasif toggle -->
+        <form method="POST" action="/admin/soru/{{ soru.id }}/toggle_aktif"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-kucuk {% if soru.get('aktif',1)!=0 %}btn-aktif-s{% else %}btn-pasif-s{% endif %}">{% if soru.get('aktif',1)!=0 %}✓ Aktif{% else %}⏸ Pasif{% endif %}</button></form>
+        <!-- Düzenle — veriyi data-* ile taşı, JSON sorunlarını önle -->
+        <button class="btn btn-gri btn-kucuk" onclick="soruDuzenleAc(this);"
+          data-sid="{{ soru.id }}"
+          data-metin="{{ soru.metin | replace('"','&quot;') | replace("'","&#39;") }}"
+          data-tip="{{ soru.tip }}"
+          data-zorunlu="{{ soru.zorunlu }}"
+          data-aktif="{{ soru.get('aktif',1) }}"
+          data-gorsel="{{ soru.get('gorsel','') }}"
+          data-kosul-sid="{{ soru.kosul_soru_id or '' }}"
+          data-kosul-deger="{{ soru.kosul_deger or '' }}"
+          data-secenekler="{{ soru.secenekler | join('|||') if soru.secenekler else '' }}"
+        >✏️ Düzenle</button>
+        <!-- Sil -->
+        <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Soruyu silmek istediğinizden emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">✕</button></form>
       </div>
     </div>
   </div>
   {% endfor %}
-  <button class="btn btn-outline btn-kucuk" style="margin-top:8px" onclick="soruEkleAc({{ bolum.id }}, {{ anket.id }})">➕ Soru Ekle</button>
+
+  <button class="btn btn-outline btn-kucuk" style="margin-top:8px" onclick="soruEkleAc({{ bolum.id }},{{ anket.id }})">➕ Soru Ekle</button>
 </div>
 {% endfor %}
 
+<!-- Yeni Bölüm -->
 <div class="kart">
   <div style="font-size:14px;font-weight:700;margin-bottom:.75rem">➕ Yeni Bölüm Ekle</div>
   <form method="POST" action="/admin/bolum/ekle" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -111,16 +154,16 @@
   </form>
 </div>
 
-<!-- SORU EKLEME MODALI -->
+<!-- ══ SORU EKLEME MODALı ══ -->
 <div class="modal-arka" id="soruEkleModal">
   <div class="modal">
     <div class="modal-baslik">➕ Soru Ekle <button class="modal-kapat" onclick="modalKapat('soruEkleModal')">✕</button></div>
-    <form method="POST" action="/admin/soru/ekle" id="soruEkleForm" enctype="multipart/form-data">
+    <form method="POST" action="/admin/soru/ekle" enctype="multipart/form-data">
       <input type="hidden" name="bolum_id" id="seBolumId">
       <input type="hidden" name="anket_id" id="seAnketId">
       <div class="alan-grubu"><label class="alan-lbl">Soru Metni</label><textarea name="metin" rows="2" placeholder="Soruyu buraya yazın..." required></textarea></div>
-      <div class="alan-grubu"><label class="alan-lbl">Soru Görseli (opsiyonel)</label><input type="file" name="soru_gorsel" accept="image/*" style="font-size:13px"><div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Soru metninin altında gösterilir</div></div>
-      <div class="alan-grubu"><label class="alan-lbl">Soru Tipi</label>
+      <div class="alan-grubu">
+        <label class="alan-lbl">Soru Tipi</label>
         <select name="tip" id="seTip" onchange="tipDegis('se')">
           <option value="secim">🔘 Tek Seçimli (Radyo)</option>
           <option value="coklu">☑️ Çoklu Seçim (Checkbox)</option>
@@ -130,8 +173,23 @@
           <option value="metin">📝 Metin (Açık Uçlu)</option>
         </select>
       </div>
-      <div id="seSecenekler" class="alan-grubu"><label class="alan-lbl">Seçenekler</label><div id="seSecenekListe"></div><button type="button" class="btn btn-gri btn-kucuk" style="margin-top:6px" onclick="secenekEkle('seSecenekListe')">+ Seçenek Ekle</button></div>
-      <div class="alan-grubu"><label class="alan-lbl">🔀 Koşullu Soru (opsiyonel)</label><select name="kosul_soru_id" id="seKosulSid" onchange="kosulSecenekDoldur('se')"><option value="">— Koşul yok —</option>{% for s in tum_sorular %}<option value="{{ s.id }}">#{{ s.id }}: {{ s.metin[:45] }}</option>{% endfor %}</select></div>
+      <div id="seSecenekler" class="alan-grubu">
+        <label class="alan-lbl">Seçenekler</label>
+        <div id="seSecenekListe"></div>
+        <button type="button" class="btn btn-gri btn-kucuk" style="margin-top:6px" onclick="secenekEkle('seSecenekListe')">+ Seçenek Ekle</button>
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">🖼 Görsel (opsiyonel)</label>
+        <input type="file" name="soru_gorsel" accept="image/*" style="font-size:13px">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Soru metninin altında gösterilir</div>
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">🔀 Koşullu Soru (opsiyonel)</label>
+        <select name="kosul_soru_id" id="seKosulSid" onchange="kosulSecenekDoldur('se')">
+          <option value="">— Koşul yok —</option>
+          {% for s in tum_sorular %}<option value="{{ s.id }}">#{{ s.id }}: {{ s.metin[:45] }}</option>{% endfor %}
+        </select>
+      </div>
       <div id="seKosulDeger" style="display:none" class="alan-grubu"><label class="alan-lbl">Bu cevap seçilince göster:</label><select name="kosul_deger" id="seKosulDegerSec"></select></div>
       <div class="alan-grubu"><label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" name="zorunlu" checked style="width:18px;height:18px;accent-color:var(--ana)"> Zorunlu soru</label></div>
       <button type="submit" class="btn btn-ana btn-tam">Soruyu Ekle</button>
@@ -139,23 +197,15 @@
   </div>
 </div>
 
-<!-- SORU DÜZENLEME MODALI -->
+<!-- ══ SORU DÜZENLEME MODALı ══ -->
 <div class="modal-arka" id="soruDuzenleModal">
   <div class="modal">
     <div class="modal-baslik">✏️ Soruyu Düzenle <button class="modal-kapat" onclick="modalKapat('soruDuzenleModal')">✕</button></div>
     <form method="POST" id="soruDuzenleForm" enctype="multipart/form-data">
       <input type="hidden" name="anket_id" value="{{ anket.id }}">
-      <input type="hidden" name="soru_gorsel_mevcut" id="sdGorselMevcut">
       <div class="alan-grubu"><label class="alan-lbl">Soru Metni</label><textarea name="metin" id="sdMetin" rows="2" required></textarea></div>
       <div class="alan-grubu">
-        <label class="alan-lbl">Soru Görseli</label>
-        <div id="sdGorselOnizleme" style="display:none;margin-bottom:6px">
-          <img id="sdGorselImg" src="" style="max-width:120px;max-height:80px;border-radius:var(--r);border:1px solid var(--kenar)">
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-top:4px;cursor:pointer"><input type="checkbox" name="soru_gorsel_sil" id="sdGorselSil" style="accent-color:var(--kirmizi)"> Görseli kaldır</label>
-        </div>
-        <input type="file" name="soru_gorsel" accept="image/*" style="font-size:13px">
-      </div>
-      <div class="alan-grubu"><label class="alan-lbl">Soru Tipi</label>
+        <label class="alan-lbl">Soru Tipi</label>
         <select name="tip" id="sdTip" onchange="tipDegis('sd')">
           <option value="secim">🔘 Tek Seçimli (Radyo)</option>
           <option value="coklu">☑️ Çoklu Seçim (Checkbox)</option>
@@ -165,8 +215,26 @@
           <option value="metin">📝 Metin (Açık Uçlu)</option>
         </select>
       </div>
-      <div id="sdSecenekler" class="alan-grubu"><label class="alan-lbl">Seçenekler</label><div id="sdSecenekListe"></div><button type="button" class="btn btn-gri btn-kucuk" style="margin-top:6px" onclick="secenekEkle('sdSecenekListe')">+ Seçenek Ekle</button></div>
-      <div class="alan-grubu"><label class="alan-lbl">🔀 Koşullu Soru</label><select name="kosul_soru_id" id="sdKosulSid" onchange="kosulSecenekDoldur('sd')"><option value="">— Koşul yok —</option>{% for s in tum_sorular %}<option value="{{ s.id }}">#{{ s.id }}: {{ s.metin[:45] }}</option>{% endfor %}</select></div>
+      <div id="sdSecenekler" class="alan-grubu">
+        <label class="alan-lbl">Seçenekler</label>
+        <div id="sdSecenekListe"></div>
+        <button type="button" class="btn btn-gri btn-kucuk" style="margin-top:6px" onclick="secenekEkle('sdSecenekListe')">+ Seçenek Ekle</button>
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">🖼 Görsel</label>
+        <div id="sdGorselOnizleme" style="display:none;margin-bottom:6px">
+          <img id="sdGorselImg" src="" style="max-width:120px;max-height:80px;border-radius:var(--r);border:1px solid var(--kenar);display:block;margin-bottom:4px">
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" name="soru_gorsel_sil" id="sdGorselSil" style="accent-color:var(--kirmizi)"> Görseli kaldır</label>
+        </div>
+        <input type="file" name="soru_gorsel" accept="image/*" style="font-size:13px">
+      </div>
+      <div class="alan-grubu">
+        <label class="alan-lbl">🔀 Koşullu Soru</label>
+        <select name="kosul_soru_id" id="sdKosulSid" onchange="kosulSecenekDoldur('sd')">
+          <option value="">— Koşul yok —</option>
+          {% for s in tum_sorular %}<option value="{{ s.id }}">#{{ s.id }}: {{ s.metin[:45] }}</option>{% endfor %}
+        </select>
+      </div>
       <div id="sdKosulDeger" style="display:none" class="alan-grubu"><label class="alan-lbl">Bu cevap seçilince göster:</label><select name="kosul_deger" id="sdKosulDegerSec"></select></div>
       <div style="display:flex;gap:16px;flex-wrap:wrap" class="alan-grubu">
         <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" name="zorunlu" id="sdZorunlu" style="width:18px;height:18px;accent-color:var(--ana)"> Zorunlu soru</label>
@@ -179,10 +247,15 @@
 
 <script>
 var tumSorular = {{ tum_sorular | tojson }};
+
 function modalAc(id){document.getElementById(id).classList.add('acik');document.body.style.overflow='hidden';}
 function modalKapat(id){document.getElementById(id).classList.remove('acik');document.body.style.overflow='';}
-document.querySelectorAll('.modal-arka').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)modalKapat(m.id);});});
-document.addEventListener('keydown',function(e){if(e.key==='Escape')document.querySelectorAll('.modal-arka.acik').forEach(function(m){modalKapat(m.id);});});
+document.querySelectorAll('.modal-arka').forEach(function(m){
+  m.addEventListener('click',function(e){if(e.target===m)modalKapat(m.id);});
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')document.querySelectorAll('.modal-arka.acik').forEach(function(m){modalKapat(m.id);});
+});
 
 function soruEkleAc(bolumId,anketId){
   document.getElementById('seBolumId').value=bolumId;
@@ -192,28 +265,50 @@ function soruEkleAc(bolumId,anketId){
   document.getElementById('seKosulSid').value='';
   document.getElementById('seKosulDeger').style.display='none';
   tipDegis('se');
-  ['','','',''].forEach(function(){secenekEkle('seSecenekListe');});
+  // 3 boş seçenek hazır gelsin
+  for(var i=0;i<3;i++) secenekEkle('seSecenekListe');
   modalAc('soruEkleModal');
 }
 
-function soruDuzenleAc(sid,soru){
+// Düzenle butonu data-* attribute'larından veri okur — JSON parse sorunu olmaz
+function soruDuzenleAc(btn){
+  var sid    = btn.dataset.sid;
+  var metin  = btn.dataset.metin;
+  var tip    = btn.dataset.tip;
+  var zorunlu= btn.dataset.zorunlu==='1';
+  var aktif  = btn.dataset.aktif!=='0';
+  var gorsel = btn.dataset.gorsel||'';
+  var kosulSid   = btn.dataset.kosulSid||'';
+  var kosulDeger = btn.dataset.kosulDeger||'';
+  var secStr = btn.dataset.secenekler||'';
+  var secs   = secStr ? secStr.split('|||') : [];
+
   document.getElementById('soruDuzenleForm').action='/admin/soru/'+sid+'/guncelle';
-  document.getElementById('sdMetin').value=soru.metin||'';
-  document.getElementById('sdTip').value=soru.tip||'secim';
-  document.getElementById('sdZorunlu').checked=!!soru.zorunlu;
-  document.getElementById('sdAktif').checked=soru.aktif!==0;
-  var gorsel=soru.gorsel||'';
-  document.getElementById('sdGorselMevcut').value=gorsel;
-  var oniz=document.getElementById('sdGorselOnizleme');
-  if(gorsel){document.getElementById('sdGorselImg').src=gorsel;oniz.style.display='block';}
-  else{oniz.style.display='none';}
+  document.getElementById('sdMetin').value=metin;
+  document.getElementById('sdTip').value=tip;
+  document.getElementById('sdZorunlu').checked=zorunlu;
+  document.getElementById('sdAktif').checked=aktif;
+
+  // Görsel
+  var onizDiv=document.getElementById('sdGorselOnizleme');
+  if(gorsel){
+    document.getElementById('sdGorselImg').src=gorsel;
+    onizDiv.style.display='block';
+  } else {
+    onizDiv.style.display='none';
+  }
   var silCb=document.getElementById('sdGorselSil');
   if(silCb)silCb.checked=false;
+
+  // Seçenekler
   var liste=document.getElementById('sdSecenekListe');
   liste.innerHTML='';
-  if(soru.secenekler&&soru.secenekler.length){soru.secenekler.forEach(function(sv){secenekEkle('sdSecenekListe',sv);});}
-  document.getElementById('sdKosulSid').value=soru.kosul_soru_id||'';
-  kosulSecenekDoldur('sd',soru.kosul_deger);
+  secs.forEach(function(sv){if(sv.trim())secenekEkle('sdSecenekListe',sv);});
+
+  // Koşul
+  document.getElementById('sdKosulSid').value=kosulSid;
+  kosulSecenekDoldur('sd',kosulDeger);
+
   tipDegis('sd');
   modalAc('soruDuzenleModal');
 }
@@ -229,7 +324,8 @@ function secenekEkle(listeId,deger){
   var liste=document.getElementById(listeId);
   var div=document.createElement('div');
   div.className='secenek-satir';
-  div.innerHTML='<input type="text" name="secenek" value="'+(deger||'')+'" placeholder="Seçenek yazın..."><button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>';
+  div.innerHTML='<input type="text" name="secenek" value="'+(deger||'')+'" placeholder="Seçenek yazın...">'
+    +'<button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>';
   liste.appendChild(div);
 }
 
@@ -238,13 +334,19 @@ function kosulSecenekDoldur(p,secilenDeger){
   var dd=document.getElementById(p+'KosulDeger');
   var ds=document.getElementById(p+'KosulDegerSec');
   if(!sid){if(dd)dd.style.display='none';return;}
-  var soru=tumSorular.find(function(s){return s.id==sid;});
+  var soru=tumSorular.find(function(s){return String(s.id)===String(sid);});
   if(!soru){if(dd)dd.style.display='none';return;}
   ds.innerHTML='';
-  var secs=soru.secenekler&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
-  secs.forEach(function(opt){var o=document.createElement('option');o.value=opt;o.textContent=opt;if(opt===secilenDeger)o.selected=true;ds.appendChild(o);});
+  var secs=Array.isArray(soru.secenekler)&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
+  secs.forEach(function(opt){
+    var o=document.createElement('option');
+    o.value=opt;o.textContent=opt;
+    if(opt===secilenDeger)o.selected=true;
+    ds.appendChild(o);
+  });
   dd.style.display='block';
 }
-tipDegis('se');tipDegis('sd');
+
+tipDegis('se'); tipDegis('sd');
 </script>
 {% endblock %}
