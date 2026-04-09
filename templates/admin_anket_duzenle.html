@@ -119,6 +119,16 @@
           {{ {'yildiz':'Yıldız','secim':'Seçim','coklu':'Çoklu','metin':'Metin','sayi':'Sayı','evet_hayir':'E/H'}.get(soru.tip, soru.tip) }}
         </span>
         <button class="btn btn-gri btn-kucuk" onclick="soruDuzenle({{ soru.id }}, {{ soru|tojson }})">✏️</button>
+        <!-- Aktif/Pasif toggle — inline, modal açmadan -->
+        <form method="POST" action="/admin/soru/{{ soru.id }}/toggle_aktif" style="display:inline">
+          <input type="hidden" name="anket_id" value="{{ anket.id }}">
+          <button type="submit"
+                  class="btn btn-kucuk"
+                  style="background:{% if soru.get('aktif',1) != 0 %}var(--yesil-ac);color:var(--yesil);border:1px solid var(--yesil){% else %}var(--gri-ac);color:var(--gri);border:1px solid var(--kenar){% endif %}"
+                  title="{% if soru.get('aktif',1) != 0 %}Pasif yap{% else %}Aktif yap{% endif %}">
+            {% if soru.get('aktif',1) != 0 %}✓ Aktif{% else %}⏸ Pasif{% endif %}
+          </button>
+        </form>
         <form method="POST" action="/admin/soru/{{ soru.id }}/sil"
               onsubmit="return confirm('Soruyu silmek istediğinizden emin misiniz?')">
           <input type="hidden" name="anket_id" value="{{ anket.id }}">

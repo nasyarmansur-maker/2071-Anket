@@ -529,6 +529,18 @@ def soru_sil(sid):
         c.execute("DELETE FROM sorular WHERE id=?",(sid,)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
+@app.route("/admin/soru/<int:sid>/toggle_aktif",methods=["POST"])
+@giris_gerekli
+def soru_toggle_aktif(sid):
+    aid=int(request.form["anket_id"])
+    with db() as c:
+        mevcut=c.execute("SELECT aktif FROM sorular WHERE id=?",(sid,)).fetchone()
+        if mevcut:
+            yeni=0 if mevcut["aktif"] else 1
+            c.execute("UPDATE sorular SET aktif=? WHERE id=?",(yeni,sid))
+            c.commit()
+    return redirect(url_for("admin_anket_duzenle",aid=aid))
+
 # ─── Ayarlar ─────────────────────────────────────────────────────
 @app.route("/admin/ayarlar",methods=["GET","POST"])
 @giris_gerekli
