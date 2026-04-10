@@ -238,8 +238,18 @@ def anket(anket_id):
         # checkbox alanlarını düzgün topla
         veriler={}
         for key in request.form:
+            if key.endswith('_diger'): continue  # ayrı işlenecek
             vals=request.form.getlist(key)
             veriler[key]=",".join(vals) if len(vals)>1 else vals[0]
+        # "Diğer" seçeneği seçildiyse metin değerini birleştir
+        for key in list(veriler.keys()):
+            diger_key = key + '_diger'
+            diger_val = request.form.get(diger_key,'').strip()
+            if diger_val and key in veriler:
+                mevcut = veriler[key]
+                # "Diğer" veya "diğer" seçilmişse metni ekle
+                if any(d in mevcut.lower() for d in ['diğer','diger','other']):
+                    veriler[key] = mevcut + ': ' + diger_val
         with db() as c:
             c.execute("INSERT INTO yanitlar (anket_id,tarih,saat,veriler) VALUES (?,?,?,?)",
                       (anket_id,datetime.now().strftime("%d.%m.%Y"),
@@ -290,6 +300,78 @@ def admin_giris():
             session["admin"]=True; return redirect(url_for("admin_panel"))
         hata="Yanlış şifre!"
     return render_template("admin_giris.html",hata=hata,**gctx())
+
+# ── Yedekleme ────────────────────────────────────────────────────
+@app.route("/admin/yedek/indir/<int:aid>")
+@giris_gerekli
+def yedek_indir(aid):
+    """Tek anketin tüm bölüm ve sorularını JSON olarak indir"""
+    a = get_anket(aid)
+    if not a: return redirect(url_for("admin_panel"))
+    # gorsel alanlarını çıkar (boyut küçülsün), sadece yapı
+    yedek = {
+        "versiyon": 1,
+        "anket_baslik": a["baslik"],
+        "anket_icon":   a["icon"],
+        "anket_rol":    a["rol"],
+        "bolumler": []
+    }
+    for b in a["bolumler"]:
+        bd = {"baslik": b["baslik"], "aktif": b.get("aktif",1), "sorular": []}
+        for s in b["sorular"]:
+            bd["sorular"].append({
+                "metin":      s["metin"],
+                "tip":        s["tip"],
+                "secenekler": s["secenekler"],
+                "zorunlu":    s["zorunlu"],
+                "aktif":      s.get("aktif",1),
+                "kosul_soru_id":  s.get("kosul_soru_id"),
+                "kosul_deger":    s.get("kosul_deger"),
+            })
+        yedek["bolumler"].append(bd)
+    js = json.dumps(yedek, ensure_ascii=False, indent=2)
+    buf = io.BytesIO(js.encode("utf-8"))
+    fn  = f"{a['baslik'][:20].replace(' ','_')}_yedek.json"
+    return send_file(buf, as_attachment=True, download_name=fn, mimetype="application/json")
+
+@app.route("/admin/yedek/yukle/<int:aid>", methods=["POST"])
+@giris_gerekli
+def yedek_yukle(aid):
+    """JSON yedeğinden bölüm ve soruları mevcut ankete ekle (üzerine yazma seçeneği ile)"""
+    f = request.files.get("yedek_dosya")
+    if not f or not f.filename.endswith(".json"):
+        return "Geçersiz dosya. Lütfen .json yedek dosyası seçin.", 400
+    try:
+        veri = json.loads(f.read().decode("utf-8"))
+    except:
+        return "Dosya okunamadı.", 400
+    if veri.get("versiyon") != 1:
+        return "Desteklenmeyen yedek versiyonu.", 400
+    
+    ustune_yaz = request.form.get("ustune_yaz") == "1"
+    
+    with db() as con:
+        if ustune_yaz:
+            for b in con.execute("SELECT id FROM bolumler WHERE anket_id=?",(aid,)).fetchall():
+                con.execute("DELETE FROM sorular WHERE bolum_id=?",(b["id"],))
+            con.execute("DELETE FROM bolumler WHERE anket_id=?",(aid,))
+        
+        # Mevcut en yüksek sıra
+        max_sira = con.execute("SELECT MAX(sira) FROM bolumler WHERE anket_id=?",(aid,)).fetchone()[0] or 0
+        
+        for bi, bolum in enumerate(veri.get("bolumler",[])):
+            bid = con.execute("INSERT INTO bolumler (anket_id,baslik,sira,aktif,gorsel) VALUES (?,?,?,?,'')",
+                (aid, bolum["baslik"], max_sira + bi + 1, bolum.get("aktif",1))).lastrowid
+            for si, soru in enumerate(bolum.get("sorular",[])):
+                con.execute("""INSERT INTO sorular
+                    (bolum_id,metin,tip,secenekler,zorunlu,sira,aktif,gorsel,kosul_soru_id,kosul_deger)
+                    VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (bid, soru["metin"], soru["tip"],
+                     json.dumps(soru.get("secenekler",[]), ensure_ascii=False),
+                     soru.get("zorunlu",1), si, soru.get("aktif",1), "",
+                     None, None))  # koşullu soru ID'leri yeni ortamda geçersiz
+        con.commit()
+    return redirect(url_for("admin_anket_duzenle", aid=aid))
 
 @app.route("/admin/cikis")
 def admin_cikis():

@@ -154,6 +154,48 @@
   </form>
 </div>
 
+<!-- ── Yedekleme Paneli ── -->
+<div class="kart" style="border:1.5px solid var(--ana-orta);background:var(--ana-ac)">
+  <div style="font-size:14px;font-weight:700;margin-bottom:.75rem;color:var(--ana)">💾 Yedekleme ve Geri Yükleme</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start">
+
+    <!-- İndir -->
+    <div style="flex:1;min-width:200px;background:var(--yuzey);border-radius:var(--r);padding:.75rem;border:1px solid var(--kenar)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">⬇ Yedeği İndir</div>
+      <div style="font-size:12px;color:var(--metin-ik);margin-bottom:8px">
+        Tüm bölüm ve soruları JSON dosyası olarak bilgisayarınıza kaydedin.
+      </div>
+      <a href="/admin/yedek/indir/{{ anket.id }}" class="btn btn-ana btn-kucuk">💾 JSON İndir</a>
+    </div>
+
+    <!-- Yükle -->
+    <div style="flex:1;min-width:200px;background:var(--yuzey);border-radius:var(--r);padding:.75rem;border:1px solid var(--kenar)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px">⬆ Yedekten Yükle</div>
+      <div style="font-size:12px;color:var(--metin-ik);margin-bottom:8px">
+        Daha önce indirdiğiniz JSON yedek dosyasını bu ankete yükleyin.
+      </div>
+      <form method="POST" action="/admin/yedek/yukle/{{ anket.id }}" enctype="multipart/form-data">
+        <input type="file" name="yedek_dosya" accept=".json" required style="font-size:12px;margin-bottom:8px;display:block;width:100%">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+            <input type="checkbox" name="ustune_yaz" value="1" style="accent-color:var(--kirmizi);width:15px;height:15px">
+            <span>Mevcut soruları sil, yedekten başla</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-ana btn-kucuk" style="margin-top:8px"
+                onclick="return confirm('Yedek dosyasını yüklemek istediğinizden emin misiniz?')">
+          ⬆ Yükle
+        </button>
+      </form>
+    </div>
+
+  </div>
+  <div style="font-size:11px;color:var(--metin-uc);margin-top:8px">
+    💡 İpucu: Farklı anketler için hazırladığınız soru setlerini yedekleyip başka okullarda kullanabilirsiniz.
+    Koşullu soru bağlantıları yeni ortamda geçersiz olabilir, manuel olarak ayarlayın.
+  </div>
+</div>
+
 <!-- ══ SORU EKLEME MODALı ══ -->
 <div class="modal-arka" id="soruEkleModal">
   <div class="modal">
