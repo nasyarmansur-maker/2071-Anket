@@ -86,16 +86,16 @@
           {% elif soru.tip=="secim" %}
           <div class="secim-grup">
             {% for opt in soru.secenekler %}
-            <label class="secim-opt">
+            <label class="secim-opt" onclick="secimRenkle(this)">
               <input type="radio" name="s_{{ soru.id }}" value="{{ opt }}"
                      {% if soru.zorunlu and not gizli %}required{% endif %}
                      data-zorunlu="{{ soru.zorunlu }}"
-                     onchange="kosulKontrol();digerKontrol(this,'s_{{ soru.id }}')">
+                     onchange="kosulKontrol();digerKontrol(this,'a_s_{{ soru.id }}',{{ soru.zorunlu }})">
               {{ opt }}
             </label>
             {% endfor %}
           </div>
-          <div id="diger_s_{{ soru.id }}" style="display:none;margin-top:6px">
+          <div id="a_s_{{ soru.id }}" style="display:none;margin-top:6px">
             <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
                    style="width:100%">
           </div>
@@ -104,19 +104,19 @@
             {% for opt in soru.secenekler %}
             <label class="checkbox-opt">
               <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt }}"
-                     onchange="checkboxStil(this);digerKontrolCoklu(this,'s_{{ soru.id }}')">
+                     onchange="checkboxStil(this);digerKontrolCoklu(this,'a_s_{{ soru.id }}',{{ soru.zorunlu }})">
               {{ opt }}
             </label>
             {% endfor %}
           </div>
-          <div id="diger_s_{{ soru.id }}" style="display:none;margin-top:6px">
+          <div id="a_s_{{ soru.id }}" style="display:none;margin-top:6px">
             <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
                    style="width:100%">
           </div>
           {% elif soru.tip=="evet_hayir" %}
           <div class="secim-grup" style="flex-direction:row">
             {% for opt in ["Evet","Hayır"] %}
-            <label class="secim-opt" style="flex:1;justify-content:center">
+            <label class="secim-opt" style="flex:1;justify-content:center" onclick="secimRenkle(this)">
               <input type="radio" name="s_{{ soru.id }}" value="{{ opt }}"
                      {% if soru.zorunlu and not gizli %}required{% endif %}
                      data-zorunlu="{{ soru.zorunlu }}" onchange="kosulKontrol()" style="display:none">
@@ -174,15 +174,15 @@
         {% elif soru.tip=="secim" %}
         <div class="secim-grup">
           {% for opt in soru.secenekler %}
-          <label class="secim-opt">
+          <label class="secim-opt" onclick="secimRenkle(this)">
             <input type="radio" name="s_{{ soru.id }}" value="{{ opt }}"
                    data-zorunlu="{{ soru.zorunlu }}"
-                   onchange="kosulKontrol();digerKontrol(this,'s_{{ soru.id }}')">
+                   onchange="kosulKontrol();digerKontrol(this,'t_s_{{ soru.id }}',{{ soru.zorunlu }})">
             {{ opt }}
           </label>
           {% endfor %}
         </div>
-        <div id="diger_s_{{ soru.id }}" style="display:none;margin-top:6px">
+        <div id="t_s_{{ soru.id }}" style="display:none;margin-top:6px">
           <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
                  style="width:100%">
         </div>
@@ -191,19 +191,19 @@
           {% for opt in soru.secenekler %}
           <label class="checkbox-opt">
             <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt }}"
-                   onchange="checkboxStil(this);digerKontrolCoklu(this,'s_{{ soru.id }}')">
+                   onchange="checkboxStil(this);digerKontrolCoklu(this,'t_s_{{ soru.id }}',{{ soru.zorunlu }})">
             {{ opt }}
           </label>
           {% endfor %}
         </div>
-        <div id="diger_s_{{ soru.id }}" style="display:none;margin-top:6px">
+        <div id="t_s_{{ soru.id }}" style="display:none;margin-top:6px">
           <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
                  style="width:100%">
         </div>
         {% elif soru.tip=="evet_hayir" %}
         <div class="secim-grup" style="flex-direction:row">
           {% for opt in ["Evet","Hayır"] %}
-          <label class="secim-opt" style="flex:1;justify-content:center">
+          <label class="secim-opt" style="flex:1;justify-content:center" onclick="secimRenkle(this)">
             <input type="radio" name="s_{{ soru.id }}" value="{{ opt }}"
                    data-zorunlu="{{ soru.zorunlu }}" onchange="kosulKontrol()" style="display:none">
             {{ opt }}
@@ -330,28 +330,47 @@ function checkboxStil(el) {
   el.closest('.checkbox-opt').classList.toggle('isaretli', el.checked);
 }
 
+/* ─── Seçim renkleme (radio ve evet/hayır) ─── */
+function secimRenkle(label) {
+  var grup = label.closest('.secim-grup');
+  if (!grup) return;
+  grup.querySelectorAll('.secim-opt').forEach(function(l) {
+    l.classList.remove('isaretli');
+  });
+  label.classList.add('isaretli');
+}
+
 /* ─── "Diğer" alanı — tek seçimli (radio) ─── */
-function digerKontrol(inp, alan) {
+// divId: her mod için farklı prefix (a_ adım, t_ tek sayfa)
+// zorunlu: soru zorunluysa 1
+function digerKontrol(inp, divId, zorunlu) {
   var deger = inp.value.trim().toLowerCase();
-  var div = document.getElementById('diger_' + alan);
-  if (!div) return;
   var isDiger = deger === 'diğer' || deger === 'diger' || deger === 'other';
+  var div = document.getElementById(divId);
+  if (!div) return;
   div.style.display = isDiger ? 'block' : 'none';
   var txt = div.querySelector('input[type=text]');
-  if (txt) { txt.required = isDiger; if (!isDiger) txt.value = ''; }
+  if (txt) {
+    // Zorunlu soruda Diğer seçildiyse metin de zorunlu
+    txt.required = isDiger && !!zorunlu;
+    if (!isDiger) txt.value = '';
+  }
   setTimeout(yukseklikGonder, 100);
 }
 
 /* ─── "Diğer" alanı — çoklu seçim (checkbox) ─── */
-function digerKontrolCoklu(cb, alan) {
+function digerKontrolCoklu(cb, divId, zorunlu) {
   var deger = cb.value.trim().toLowerCase();
   var isDiger = deger === 'diğer' || deger === 'diger' || deger === 'other';
   if (!isDiger) return;
-  var div = document.getElementById('diger_' + alan);
+  var div = document.getElementById(divId);
   if (!div) return;
   div.style.display = cb.checked ? 'block' : 'none';
   var txt = div.querySelector('input[type=text]');
-  if (txt) { txt.required = cb.checked; if (!cb.checked) txt.value = ''; }
+  if (txt) {
+    txt.required = cb.checked && !!zorunlu;
+    if (!cb.checked) txt.value = '';
+  }
   setTimeout(yukseklikGonder, 100);
 }
 
