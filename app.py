@@ -164,9 +164,9 @@ def get_anket(aid):
                 normalized=[]
                 for opt in raw:
                     if isinstance(opt,str):
-                        normalized.append({"metin":opt,"mg":0,"mz":0})
+                        normalized.append({"metin":opt,"mg":0,"mz":0,"ph":""})
                     elif isinstance(opt,dict):
-                        normalized.append({"metin":opt.get("metin",opt.get("m","")),"mg":int(opt.get("mg",0)),"mz":int(opt.get("mz",0))})
+                        normalized.append({"metin":opt.get("metin",opt.get("m","")),"mg":int(opt.get("mg",0)),"mz":int(opt.get("mz",0)),"ph":opt.get("ph","")})
                 s["secenekler"]=normalized
             result["bolumler"].append(bd)
         return result
@@ -604,8 +604,9 @@ def bolum_sil(bid):
 def _sec_listesi_olustur(form):
     """Form verilerinden seçenek listesi oluşturur (esnek metin girişi desteği)."""
     metinler = form.getlist("secenek")
-    mg_flags = form.getlist("secenek_mg")   # "1" ya da "0", her seçenek için
-    mz_flags = form.getlist("secenek_mz")   # "1" ya da "0", her seçenek için
+    mg_flags = form.getlist("secenek_mg")
+    mz_flags = form.getlist("secenek_mz")
+    ph_vals  = form.getlist("secenek_ph")
     secs = []
     for i, m in enumerate(metinler):
         m = m.strip()
@@ -613,10 +614,11 @@ def _sec_listesi_olustur(form):
             continue
         mg = 1 if i < len(mg_flags) and mg_flags[i] == "1" else 0
         mz = 1 if i < len(mz_flags) and mz_flags[i] == "1" else 0
-        if mg == 0 and mz == 0:
+        ph = ph_vals[i].strip() if i < len(ph_vals) else ""
+        if mg == 0 and mz == 0 and not ph:
             secs.append(m)          # geriye dönük uyumluluk için düz string
         else:
-            secs.append({"metin": m, "mg": mg, "mz": mz})
+            secs.append({"metin": m, "mg": mg, "mz": mz, "ph": ph})
     return secs
 
 @app.route("/admin/soru/ekle",methods=["POST"])

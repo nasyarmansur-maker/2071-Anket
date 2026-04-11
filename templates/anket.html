@@ -90,11 +90,12 @@
             {% set opt_m = opt.metin if opt is mapping else opt %}
             {% set opt_mg = opt.mg if opt is mapping else 0 %}
             {% set opt_mz = opt.mz if opt is mapping else 0 %}
+            {% set opt_ph = opt.ph if opt is mapping else '' %}
             <label class="secim-opt" onclick="secimRenkle(this)">
               <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
                      {% if soru.zorunlu and not gizli %}required{% endif %}
                      data-zorunlu="{{ soru.zorunlu }}"
-                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}"
+                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
                      onchange="kosulKontrol();digerKontrol(this,'a_s_{{ soru.id }}')">
               {{ opt_m }}
             </label>
@@ -110,9 +111,10 @@
             {% set opt_m = opt.metin if opt is mapping else opt %}
             {% set opt_mg = opt.mg if opt is mapping else 0 %}
             {% set opt_mz = opt.mz if opt is mapping else 0 %}
+            {% set opt_ph = opt.ph if opt is mapping else '' %}
             <label class="checkbox-opt">
               <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}"
+                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
                      onchange="checkboxStil(this);digerKontrolCoklu(this,'a_s_{{ soru.id }}')">
               {{ opt_m }}
             </label>
@@ -186,10 +188,11 @@
           {% set opt_m = opt.metin if opt is mapping else opt %}
           {% set opt_mg = opt.mg if opt is mapping else 0 %}
           {% set opt_mz = opt.mz if opt is mapping else 0 %}
+          {% set opt_ph = opt.ph if opt is mapping else '' %}
           <label class="secim-opt" onclick="secimRenkle(this)">
             <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
                    data-zorunlu="{{ soru.zorunlu }}"
-                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}"
+                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
                    onchange="kosulKontrol();digerKontrol(this,'t_s_{{ soru.id }}')">
             {{ opt_m }}
           </label>
@@ -205,9 +208,10 @@
           {% set opt_m = opt.metin if opt is mapping else opt %}
           {% set opt_mg = opt.mg if opt is mapping else 0 %}
           {% set opt_mz = opt.mz if opt is mapping else 0 %}
+          {% set opt_ph = opt.ph if opt is mapping else '' %}
           <label class="checkbox-opt">
             <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}"
+                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
                    onchange="checkboxStil(this);digerKontrolCoklu(this,'t_s_{{ soru.id }}')">
             {{ opt_m }}
           </label>
@@ -408,35 +412,44 @@ function secimRenkleriRestore() {
   });
 }
 
-/* ─── Metin girişi — tek seçimli (radio): data-mg/mz attribute'larına göre ─── */
+/* ─── Metin girişi — tek seçimli (radio): data-mg/mz/ph attribute'larına göre ─── */
 function digerKontrol(inp, divId) {
   var mg = inp.dataset.mg === '1';
   var mz = inp.dataset.mz === '1';
+  var ph = inp.dataset.ph || 'Lütfen belirtin...';
   var div = document.getElementById(divId);
   if (!div) return;
   div.style.display = mg ? 'block' : 'none';
   var txt = div.querySelector('input[type=text]');
   if (txt) {
     txt.required = mg && mz;
+    txt.placeholder = mg ? ph : 'Lütfen belirtin...';
     if (!mg) txt.value = '';
   }
   setTimeout(yukseklikGonder, 100);
 }
 
-/* ─── Metin girişi — çoklu seçim (checkbox): data-mg/mz attribute'larına göre ─── */
+/* ─── Metin girişi — çoklu seçim (checkbox): data-mg/mz/ph attribute'larına göre ─── */
 function digerKontrolCoklu(cb, divId) {
   var mg = cb.dataset.mg === '1';
-  var mz = cb.dataset.mz === '1';
   if (!mg) return;
   var div = document.getElementById(divId);
   if (!div) return;
-  // Birden fazla mg seçeneği olabilir; herhangi biri seçiliyse alanı aç
-  var enAzBiriSecili = Array.from(div.closest('.soru').querySelectorAll('input[type=checkbox][data-mg="1"]'))
-    .some(function(c){ return c.checked; });
+  var soruEl = div.closest('.soru');
+  // Seçili mg checkbox'larını bul
+  var seciliMgCbs = Array.from(soruEl.querySelectorAll('input[type=checkbox][data-mg="1"]:checked'));
+  var enAzBiriSecili = seciliMgCbs.length > 0;
   div.style.display = enAzBiriSecili ? 'block' : 'none';
   var txt = div.querySelector('input[type=text]');
   if (txt) {
-    txt.required = enAzBiriSecili && mz;
+    // Zorunluluk: seçili mg'li cb'lerden herhangi biri mz=1 ise zorunlu
+    var zorunlu = seciliMgCbs.some(function(c){ return c.dataset.mz === '1'; });
+    txt.required = enAzBiriSecili && zorunlu;
+    // Placeholder: son seçilen mg'li cb'nin ph değeri (varsa)
+    if (enAzBiriSecili) {
+      var sonPh = seciliMgCbs[seciliMgCbs.length-1].dataset.ph;
+      txt.placeholder = sonPh || 'Lütfen belirtin...';
+    }
     if (!enAzBiriSecili) txt.value = '';
   }
   setTimeout(yukseklikGonder, 100);

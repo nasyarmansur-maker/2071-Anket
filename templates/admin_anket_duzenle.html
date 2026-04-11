@@ -345,7 +345,7 @@ function soruDuzenleAc(btn){
   // Seçenekler
   var liste=document.getElementById('sdSecenekListe');
   liste.innerHTML='';
-  secs.forEach(function(sv){ secenekEkle('sdSecenekListe', typeof sv==='string'?sv:sv.metin, typeof sv==='object'?sv.mg:0, typeof sv==='object'?sv.mz:0); });
+  secs.forEach(function(sv){ secenekEkle('sdSecenekListe', typeof sv==='string'?sv:sv.metin, typeof sv==='object'?sv.mg:0, typeof sv==='object'?sv.mz:0, typeof sv==='object'?sv.ph:''); });
 
   // Koşul
   document.getElementById('sdKosulSid').value=kosulSid;
@@ -362,7 +362,7 @@ function tipDegis(p){
   if(d)d.style.display=goster?'block':'none';
 }
 
-function secenekEkle(listeId,deger,mg,mz){
+function secenekEkle(listeId,deger,mg,mz,deger_ph){
   mg=mg?1:0; mz=mz?1:0;
   var liste=document.getElementById(listeId);
 
@@ -410,6 +410,31 @@ function secenekEkle(listeId,deger,mg,mz){
   lblMz.appendChild(document.createTextNode(' Zorunlu'));
   mzGrup.appendChild(lblMz);
 
+  // Placeholder input (görünür sadece mg=1 iken)
+  var phWrap=document.createElement('div');
+  phWrap.className='ph-wrap';
+  Object.assign(phWrap.style,{display:mg?'flex':'none',width:'100%',marginTop:'4px',gap:'4px',alignItems:'center'});
+
+  var phLbl=document.createElement('label');
+  phLbl.style.cssText='font-size:11px;color:var(--metin-uc);white-space:nowrap;flex-shrink:0';
+  phLbl.textContent='Kutu metni:';
+
+  var phInp=document.createElement('input');
+  phInp.type='text'; phInp.name='secenek_ph'; phInp.value=deger_ph||'';
+  phInp.placeholder='Lütfen belirtin...';
+  Object.assign(phInp.style,{flex:'1',fontSize:'12px',padding:'4px 8px'});
+
+  phWrap.appendChild(phLbl);
+  phWrap.appendChild(phInp);
+
+  // mg toggle aynı zamanda phWrap'i de göster/gizle
+  cbMg.addEventListener('change',function(){
+    hidMg.value=this.checked?1:0;
+    mzGrup.style.display=this.checked?'flex':'none';
+    phWrap.style.display=this.checked?'flex':'none';
+    if(!this.checked){ hidMz.value=0; cbMz.checked=false; phInp.value=''; }
+  });
+
   var silBtn=document.createElement('button');
   silBtn.type='button'; silBtn.className='btn btn-tehlike btn-kucuk';
   silBtn.textContent='X';
@@ -419,6 +444,7 @@ function secenekEkle(listeId,deger,mg,mz){
   div.appendChild(lblMg);
   div.appendChild(mzGrup);
   div.appendChild(silBtn);
+  div.appendChild(phWrap);
   liste.appendChild(div);
 }
 
