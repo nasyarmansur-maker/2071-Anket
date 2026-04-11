@@ -8,8 +8,7 @@
 .modal{background:var(--yuzey);border-radius:var(--r-xl);padding:1.5rem;width:100%;max-width:540px;margin:2rem auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .modal-baslik{font-size:17px;font-weight:700;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
 .modal-kapat{background:none;border:none;font-size:24px;cursor:pointer;color:var(--gri);line-height:1;padding:0 4px}
-.secenek-satir{display:flex;gap:6px;margin-bottom:6px}
-.secenek-satir input{flex:1}
+.secenek-satir{margin-bottom:6px}
 .bolum-blok{background:var(--yuzey);border:1.5px solid var(--kenar);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem}
 .bolum-blok.pasif{opacity:.5}
 .soru-item{background:var(--gri-ac);border:1px solid var(--kenar);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
@@ -113,7 +112,7 @@
       <div style="flex:1;min-width:100px">
         <div style="font-size:13px;font-weight:500;line-height:1.4">{{ soru.metin }}</div>
         {% if soru.kosul_soru_id %}<div style="font-size:11px;color:var(--turuncu);margin-top:2px">🔀 Koşullu</div>{% endif %}
-        {% if soru.sec_listesi %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.sec_listesi %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
+        {% if soru.secenekler %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}{% set sm = sv.metin if sv is mapping else sv %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sm }}{% if sv is mapping and sv.mg %} ✏️{% endif %}</span>{% endfor %}</div>{% endif %}
       </div>
 
       <!-- Aksiyonlar -->
@@ -131,7 +130,7 @@
           data-gorsel="{{ soru.get('gorsel','') }}"
           data-kosul-sid="{{ soru.kosul_soru_id or '' }}"
           data-kosul-deger="{{ soru.kosul_deger or '' }}"
-          data-secenekler="{{ soru.secenekler | tojson | replace('"', '&quot;') }}"
+          data-secenekler='{{ soru.secenekler | tojson if soru.secenekler else "[]" }}'
         >✏️ Düzenle</button>
         <!-- Sil -->
         <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Soruyu silmek istediğinizden emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">✕</button></form>
@@ -308,7 +307,7 @@ function soruEkleAc(bolumId,anketId){
   document.getElementById('seKosulDeger').style.display='none';
   tipDegis('se');
   // 3 boş seçenek hazır gelsin
-  for(var i=0;i<3;i++) secenekEkle('seSecenekListe', '', false, false, i);
+  for(var i=0;i<3;i++) secenekEkle('seSecenekListe');
   modalAc('soruEkleModal');
 }
 
@@ -322,7 +321,9 @@ function soruDuzenleAc(btn){
   var gorsel = btn.dataset.gorsel||'';
   var kosulSid   = btn.dataset.kosulSid||'';
   var kosulDeger = btn.dataset.kosulDeger||'';
-  var secStr = btn.dataset.secenekler||'';
+  var secStr = btn.dataset.secenekler||'[]';
+  var secs = [];
+  try { secs = JSON.parse(secStr); } catch(e) { secs = []; }
 
   document.getElementById('soruDuzenleForm').action='/admin/soru/'+sid+'/guncelle';
   document.getElementById('sdMetin').value=metin;
@@ -341,15 +342,10 @@ function soruDuzenleAc(btn){
   var silCb=document.getElementById('sdGorselSil');
   if(silCb)silCb.checked=false;
 
-  // Seçenekler — JSON parse
+  // Seçenekler
   var liste=document.getElementById('sdSecenekListe');
   liste.innerHTML='';
-  var secs=[];
-  try{ secs=secStr?JSON.parse(secStr):[]; } catch(e){ secs=[]; }
-  secs.forEach(function(sv, i) {
-    if (typeof sv === 'string') { if(sv.trim()) secenekEkle('sdSecenekListe', sv, false, false, i, ''); }
-    else { secenekEkle('sdSecenekListe', sv.m||'', sv.ac||false, sv.zor||false, i, sv.ac_metin||''); }
-  });
+  secs.forEach(function(sv){ secenekEkle('sdSecenekListe', typeof sv==='string'?sv:sv.metin, typeof sv==='object'?sv.mg:0, typeof sv==='object'?sv.mz:0, typeof sv==='object'?sv.ph:''); });
 
   // Koşul
   document.getElementById('sdKosulSid').value=kosulSid;
@@ -366,68 +362,90 @@ function tipDegis(p){
   if(d)d.style.display=goster?'block':'none';
 }
 
-function secenekEkle(listeId, deger, ac, zor, idx, acMetin) {
-  var liste = document.getElementById(listeId);
-  var i = liste ? liste.querySelectorAll('.secenek-satir').length : 0;
-  deger   = deger   !== undefined ? deger   : '';
-  ac      = !!ac;
-  zor     = !!zor;
-  acMetin = acMetin || '';
+function secenekEkle(listeId,deger,mg,mz,deger_ph){
+  mg=mg?1:0; mz=mz?1:0;
+  var liste=document.getElementById(listeId);
 
-  // Satır kapsayıcı
-  var div = document.createElement('div');
-  div.className = 'secenek-satir';
-  div.style.cssText = 'flex-direction:column;gap:4px;background:var(--gri-ac);padding:6px 8px;border-radius:var(--r);margin-bottom:6px';
+  var div=document.createElement('div');
+  div.className='secenek-satir';
+  Object.assign(div.style,{display:'flex',flexWrap:'wrap',gap:'4px',alignItems:'center',marginBottom:'6px'});
 
-  // Üst satır: metin input + sil butonu
-  var row1 = document.createElement('div');
-  row1.style.cssText = 'display:flex;gap:6px';
-  var inp = document.createElement('input');
-  inp.type = 'text'; inp.name = 'secenek'; inp.value = deger;
-  inp.placeholder = 'Seçenek metni...'; inp.style.flex = '1';
-  var silBtn = document.createElement('button');
-  silBtn.type = 'button'; silBtn.className = 'btn btn-tehlike btn-kucuk'; silBtn.textContent = '✕';
-  silBtn.onclick = function(){ this.closest('.secenek-satir').remove(); };
-  row1.appendChild(inp); row1.appendChild(silBtn);
+  var txtInp=document.createElement('input');
+  txtInp.type='text'; txtInp.name='secenek'; txtInp.value=deger||'';
+  txtInp.placeholder='Secenek yazin...';
+  Object.assign(txtInp.style,{flex:'1',minWidth:'120px'});
 
-  // İkinci satır: checkboxlar
-  var row2 = document.createElement('div');
-  row2.style.cssText = 'display:flex;gap:14px;font-size:12px;flex-wrap:wrap;align-items:center';
+  var hidMg=document.createElement('input');
+  hidMg.type='hidden'; hidMg.name='secenek_mg'; hidMg.value=mg;
 
-  var lblAc = document.createElement('label');
-  lblAc.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer';
-  var cbAc = document.createElement('input');
-  cbAc.type = 'checkbox'; cbAc.name = 'secenek_ac'; cbAc.value = i;
-  cbAc.checked = ac; cbAc.style.cssText = 'width:14px;height:14px;accent-color:var(--ana)';
-  cbAc.onchange = function(){ secAcToggle(this); };
-  lblAc.appendChild(cbAc); lblAc.appendChild(document.createTextNode(' Metin alanı aç'));
+  var cbMg=document.createElement('input');
+  cbMg.type='checkbox'; cbMg.checked=!!mg;
 
-  var lblZor = document.createElement('label');
-  lblZor.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer';
-  var cbZor = document.createElement('input');
-  cbZor.type = 'checkbox'; cbZor.name = 'secenek_zor'; cbZor.value = i;
-  cbZor.checked = zor; cbZor.style.cssText = 'width:14px;height:14px;accent-color:var(--kirmizi)';
-  lblZor.appendChild(cbZor); lblZor.appendChild(document.createTextNode(' Metin zorunlu'));
+  var mzGrup=document.createElement('span');
+  mzGrup.className='mz-grup';
+  Object.assign(mzGrup.style,{display:mg?'flex':'none',alignItems:'center',gap:'3px',fontSize:'12px',whiteSpace:'nowrap'});
 
-  row2.appendChild(lblAc); row2.appendChild(lblZor);
+  var hidMz=document.createElement('input');
+  hidMz.type='hidden'; hidMz.name='secenek_mz'; hidMz.value=mz;
 
-  // Üçüncü satır: ac_metin input (gizli)
-  var row3 = document.createElement('div');
-  row3.className = 'sec-ac-metin-wrap';
-  row3.style.cssText = 'display:' + (ac ? 'block' : 'none') + ';margin-top:2px';
-  var inpAcMetin = document.createElement('input');
-  inpAcMetin.type = 'text'; inpAcMetin.name = 'secenek_ac_metin'; inpAcMetin.value = acMetin;
-  inpAcMetin.placeholder = 'Metin kutusu etiketi (ör: Lütfen açıklayınız...)';
-  inpAcMetin.style.cssText = 'width:100%;font-size:12px;box-sizing:border-box';
-  row3.appendChild(inpAcMetin);
+  var cbMz=document.createElement('input');
+  cbMz.type='checkbox'; cbMz.checked=!!mz;
+  cbMz.addEventListener('change',function(){ hidMz.value=this.checked?1:0; });
 
-  div.appendChild(row1); div.appendChild(row2); div.appendChild(row3);
-  if(liste) liste.appendChild(div);
-}
+  cbMg.addEventListener('change',function(){
+    hidMg.value=this.checked?1:0;
+    mzGrup.style.display=this.checked?'flex':'none';
+    if(!this.checked){ hidMz.value=0; cbMz.checked=false; }
+  });
 
-function secAcToggle(cb) {
-  var wrap = cb.closest('.secenek-satir').querySelector('.sec-ac-metin-wrap');
-  if(wrap) wrap.style.display = cb.checked ? 'block' : 'none';
+  var lblMg=document.createElement('label');
+  Object.assign(lblMg.style,{display:'flex',alignItems:'center',gap:'3px',fontSize:'12px',whiteSpace:'nowrap',cursor:'pointer'});
+  lblMg.title='Secildiginde metin kutusu ac';
+  lblMg.appendChild(hidMg); lblMg.appendChild(cbMg);
+  lblMg.appendChild(document.createTextNode(' Metin alani'));
+
+  var lblMz=document.createElement('label');
+  lblMz.style.cursor='pointer'; lblMz.style.fontSize='12px';
+  lblMz.appendChild(hidMz); lblMz.appendChild(cbMz);
+  lblMz.appendChild(document.createTextNode(' Zorunlu'));
+  mzGrup.appendChild(lblMz);
+
+  // Placeholder input (görünür sadece mg=1 iken)
+  var phWrap=document.createElement('div');
+  phWrap.className='ph-wrap';
+  Object.assign(phWrap.style,{display:mg?'flex':'none',width:'100%',marginTop:'4px',gap:'4px',alignItems:'center'});
+
+  var phLbl=document.createElement('label');
+  phLbl.style.cssText='font-size:11px;color:var(--metin-uc);white-space:nowrap;flex-shrink:0';
+  phLbl.textContent='Kutu metni:';
+
+  var phInp=document.createElement('input');
+  phInp.type='text'; phInp.name='secenek_ph'; phInp.value=deger_ph||'';
+  phInp.placeholder='Lütfen belirtin...';
+  Object.assign(phInp.style,{flex:'1',fontSize:'12px',padding:'4px 8px'});
+
+  phWrap.appendChild(phLbl);
+  phWrap.appendChild(phInp);
+
+  // mg toggle aynı zamanda phWrap'i de göster/gizle
+  cbMg.addEventListener('change',function(){
+    hidMg.value=this.checked?1:0;
+    mzGrup.style.display=this.checked?'flex':'none';
+    phWrap.style.display=this.checked?'flex':'none';
+    if(!this.checked){ hidMz.value=0; cbMz.checked=false; phInp.value=''; }
+  });
+
+  var silBtn=document.createElement('button');
+  silBtn.type='button'; silBtn.className='btn btn-tehlike btn-kucuk';
+  silBtn.textContent='X';
+  silBtn.addEventListener('click',function(){ div.remove(); });
+
+  div.appendChild(txtInp);
+  div.appendChild(lblMg);
+  div.appendChild(mzGrup);
+  div.appendChild(silBtn);
+  div.appendChild(phWrap);
+  liste.appendChild(div);
 }
 
 function kosulSecenekDoldur(p,secilenDeger){
@@ -438,11 +456,12 @@ function kosulSecenekDoldur(p,secilenDeger){
   var soru=tumSorular.find(function(s){return String(s.id)===String(sid);});
   if(!soru){if(dd)dd.style.display='none';return;}
   ds.innerHTML='';
-  var secs=Array.isArray(soru.secenekler)&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
-  secs.forEach(function(opt){
+  var rawSecs=Array.isArray(soru.secenekler)&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
+  rawSecs.forEach(function(opt){
+    var txt=typeof opt==='string'?opt:opt.metin;
     var o=document.createElement('option');
-    o.value=opt;o.textContent=opt;
-    if(opt===secilenDeger)o.selected=true;
+    o.value=txt;o.textContent=txt;
+    if(txt===secilenDeger)o.selected=true;
     ds.appendChild(o);
   });
   dd.style.display='block';
