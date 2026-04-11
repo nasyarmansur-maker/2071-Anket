@@ -365,22 +365,60 @@ function tipDegis(p){
 function secenekEkle(listeId,deger,mg,mz){
   mg=mg?1:0; mz=mz?1:0;
   var liste=document.getElementById(listeId);
+
   var div=document.createElement('div');
   div.className='secenek-satir';
-  div.style.cssText='display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px';
-  div.innerHTML=
-    '<input type="text" name="secenek" value="'+(deger||'')+'" placeholder="Seçenek yazın..." style="flex:1;min-width:120px">'+
-    '<label style="display:flex;align-items:center;gap:3px;font-size:12px;white-space:nowrap;cursor:pointer" title="Seçildiğinde metin kutusu aç">'+
-      '<input type="hidden" name="secenek_mg" value="'+mg+'">'+
-      '<input type="checkbox" '+(mg?'checked':'')+' onchange="this.previousElementSibling.value=this.checked?1:0;this.closest('.secenek-satir').querySelector('.mz-grup').style.display=this.checked?'flex':'none'"> ✏️ Metin alanı'+
-    '</label>'+
-    '<span class="mz-grup" style="display:'+(mg?'flex':'none')+';align-items:center;gap:3px;font-size:12px;white-space:nowrap">'+
-      '<label style="cursor:pointer">'+
-        '<input type="hidden" name="secenek_mz" value="'+mz+'">'+
-        '<input type="checkbox" '+(mz?'checked':'')+' onchange="this.previousElementSibling.value=this.checked?1:0"> Zorunlu'+
-      '</label>'+
-    '</span>'+
-    '<button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>';
+  Object.assign(div.style,{display:'flex',flexWrap:'wrap',gap:'4px',alignItems:'center',marginBottom:'6px'});
+
+  var txtInp=document.createElement('input');
+  txtInp.type='text'; txtInp.name='secenek'; txtInp.value=deger||'';
+  txtInp.placeholder='Secenek yazin...';
+  Object.assign(txtInp.style,{flex:'1',minWidth:'120px'});
+
+  var hidMg=document.createElement('input');
+  hidMg.type='hidden'; hidMg.name='secenek_mg'; hidMg.value=mg;
+
+  var cbMg=document.createElement('input');
+  cbMg.type='checkbox'; cbMg.checked=!!mg;
+
+  var mzGrup=document.createElement('span');
+  mzGrup.className='mz-grup';
+  Object.assign(mzGrup.style,{display:mg?'flex':'none',alignItems:'center',gap:'3px',fontSize:'12px',whiteSpace:'nowrap'});
+
+  var hidMz=document.createElement('input');
+  hidMz.type='hidden'; hidMz.name='secenek_mz'; hidMz.value=mz;
+
+  var cbMz=document.createElement('input');
+  cbMz.type='checkbox'; cbMz.checked=!!mz;
+  cbMz.addEventListener('change',function(){ hidMz.value=this.checked?1:0; });
+
+  cbMg.addEventListener('change',function(){
+    hidMg.value=this.checked?1:0;
+    mzGrup.style.display=this.checked?'flex':'none';
+    if(!this.checked){ hidMz.value=0; cbMz.checked=false; }
+  });
+
+  var lblMg=document.createElement('label');
+  Object.assign(lblMg.style,{display:'flex',alignItems:'center',gap:'3px',fontSize:'12px',whiteSpace:'nowrap',cursor:'pointer'});
+  lblMg.title='Secildiginde metin kutusu ac';
+  lblMg.appendChild(hidMg); lblMg.appendChild(cbMg);
+  lblMg.appendChild(document.createTextNode(' Metin alani'));
+
+  var lblMz=document.createElement('label');
+  lblMz.style.cursor='pointer'; lblMz.style.fontSize='12px';
+  lblMz.appendChild(hidMz); lblMz.appendChild(cbMz);
+  lblMz.appendChild(document.createTextNode(' Zorunlu'));
+  mzGrup.appendChild(lblMz);
+
+  var silBtn=document.createElement('button');
+  silBtn.type='button'; silBtn.className='btn btn-tehlike btn-kucuk';
+  silBtn.textContent='X';
+  silBtn.addEventListener('click',function(){ div.remove(); });
+
+  div.appendChild(txtInp);
+  div.appendChild(lblMg);
+  div.appendChild(mzGrup);
+  div.appendChild(silBtn);
   liste.appendChild(div);
 }
 
