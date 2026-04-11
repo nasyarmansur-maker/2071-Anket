@@ -461,16 +461,57 @@ def admin_sonuclar(anket_id):
                     except: pass
     # Yıldız ortalamaları
     yildiz_ort={k:round(v[0]/v[1],1) for k,v in yildiz_toplamlar.items() if v[1]>0}
-    # Yanıt tamamlanma oranı (zorunlu olmayan sorular boş bırakılmış olabilir)
+    # Saat dağılımı (0-23)
+    with db() as c:
+        saatler_raw=c.execute("SELECT saat FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchall()
+    saat_dagilim={str(i):0 for i in range(24)}
+    for row in saatler_raw:
+        try:
+            saat=int(row["saat"].split(":")[0])
+            saat_dagilim[str(saat)]=saat_dagilim.get(str(saat),0)+1
+        except: pass
+    # Yanıt tamamlanma (kaç yanıt tüm zorunlu soruları doldurmuş)
     tum_sorular=[]
     for b in a["bolumler"]:
         for s in b["sorular"]: tum_sorular.append(s)
+    zorunlu_ids=["s_"+str(s["id"]) for s in tum_sorular if s.get("zorunlu")]
+    tam_doldu=0
+    for y in tum:
+        veri=json.loads(y["veriler"])
+        if all(veri.get(k,"").strip() for k in zorunlu_ids): tam_doldu+=1
+    tamamlanma_ort=round(tam_doldu/toplam_db*100) if toplam_db>0 else 0
+    # Soru yanıt oranları
+    soru_yanit_oran={}
+    for s in tum_sorular:
+        k="s_"+str(s["id"])
+        dolu=sum(1 for y in tum if json.loads(y["veriler"]).get(k,"").strip())
+        soru_yanit_oran[k]=round(dolu/toplam_db*100) if toplam_db>0 else 0
     ctx=gctx()
+    # Bölüm bazlı istatistik (bolum_id -> soru istatistikleri)
+    bolum_istat = {}
+    for bolum in a["bolumler"]:
+        bid = bolum["id"]
+        bolum_istat[bid] = {}
+        for soru in bolum["sorular"]:
+            key = "s_"+str(soru["id"])
+            bolum_istat[bid][str(soru["id"])] = {
+                "metin": soru["metin"],
+                "tip": soru["tip"],
+                "sec_listesi": soru.get("sec_listesi", []),
+                "vals": soru_istat.get(key, {}),
+                "ort": yildiz_ort.get(key, None),
+                "yanit_oran": soru_yanit_oran.get(key, 0),
+            }
     ctx.update({"anket":a,"yanitlar":liste,
                 "soru_istat":json.dumps(soru_istat,ensure_ascii=False),
                 "yildiz_ort":json.dumps(yildiz_ort,ensure_ascii=False),
                 "tarihler":[r["tarih"] for r in tarihler],
                 "tarih_sayilari":json.dumps([{"t":r["tarih"],"n":r["sayi"]} for r in tarih_sayilari],ensure_ascii=False),
+                "saat_dagilim":json.dumps(saat_dagilim,ensure_ascii=False),
+                "tamamlanma_ort":tamamlanma_ort,"tam_doldu":tam_doldu,
+                "soru_yanit_oran":json.dumps(soru_yanit_oran,ensure_ascii=False),
+                "soru_yanit_oran_dict":soru_yanit_oran,
+                "bolum_istat":json.dumps(bolum_istat,ensure_ascii=False),
                 "filtre_tarih":filtre_tarih,"filtre_arama":filtre_arama,
                 "toplam_yanit":len(liste),"toplam_db":toplam_db,
                 "tum_sorular":tum_sorular})
