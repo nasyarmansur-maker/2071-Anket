@@ -21,6 +21,10 @@
 .checkbox-opt input[type=checkbox]{accent-color:var(--ana);width:18px;height:18px;cursor:pointer;flex-shrink:0}
 .soru[data-gizli="1"]{display:none!important}
 .secim-opt.isaretli{background:var(--ana-ac);border-color:var(--ana);color:var(--ana)}
+.opt-blok{display:flex;flex-direction:column;gap:0}
+.inline-mg-wrap{padding:6px 0 4px 0;animation:gelis .15s ease}
+.inline-mg-wrap input[type=text]{width:100%;padding:9px 12px;border:1.5px solid var(--ana-orta);border-radius:var(--r);font-size:14px;background:var(--ana-ac);color:var(--metin);outline:none;font-family:inherit}
+.inline-mg-wrap input[type=text]:focus{border-color:var(--ana);box-shadow:0 0 0 3px var(--ana-ac)}
 </style>
 {% endblock %}
 {% block icerik %}
@@ -91,19 +95,24 @@
             {% set opt_mg = opt.mg if opt is mapping else 0 %}
             {% set opt_mz = opt.mz if opt is mapping else 0 %}
             {% set opt_ph = opt.ph if opt is mapping else '' %}
-            <label class="secim-opt" onclick="secimRenkle(this)">
-              <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                     {% if soru.zorunlu and not gizli %}required{% endif %}
-                     data-zorunlu="{{ soru.zorunlu }}"
-                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
-                     onchange="kosulKontrol();digerKontrol(this,'a_s_{{ soru.id }}')">
-              {{ opt_m }}
-            </label>
+            <div class="opt-blok">
+              <label class="secim-opt" onclick="secimRenkle(this)">
+                <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
+                       {% if soru.zorunlu and not gizli %}required{% endif %}
+                       data-zorunlu="{{ soru.zorunlu }}"
+                       data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
+                       data-optidx="{{ loop.index0 }}"
+                       onchange="kosulKontrol();digerKontrolInline(this,'a_s_{{ soru.id }}')">
+                {{ opt_m }}
+              </label>
+              {% if opt_mg %}
+              <div class="inline-mg-wrap" id="a_s_{{ soru.id }}_{{ loop.index0 }}" style="display:none">
+                <input type="text" name="s_{{ soru.id }}_diger"
+                       placeholder="{{ opt_ph if opt_ph else 'Lütfen belirtin...' }}">
+              </div>
+              {% endif %}
+            </div>
             {% endfor %}
-          </div>
-          <div id="a_s_{{ soru.id }}" style="display:none;margin-top:6px">
-            <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
-                   style="width:100%">
           </div>
           {% elif soru.tip=="coklu" %}
           <div class="checkbox-grup">
@@ -112,17 +121,22 @@
             {% set opt_mg = opt.mg if opt is mapping else 0 %}
             {% set opt_mz = opt.mz if opt is mapping else 0 %}
             {% set opt_ph = opt.ph if opt is mapping else '' %}
-            <label class="checkbox-opt">
-              <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
-                     onchange="checkboxStil(this);digerKontrolCoklu(this,'a_s_{{ soru.id }}')">
-              {{ opt_m }}
-            </label>
+            <div class="opt-blok">
+              <label class="checkbox-opt">
+                <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
+                       data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
+                       data-optidx="{{ loop.index0 }}"
+                       onchange="checkboxStil(this);digerKontrolInlineCoklu(this,'a_s_{{ soru.id }}')">
+                {{ opt_m }}
+              </label>
+              {% if opt_mg %}
+              <div class="inline-mg-wrap" id="a_s_{{ soru.id }}_{{ loop.index0 }}" style="display:none">
+                <input type="text" name="s_{{ soru.id }}_diger"
+                       placeholder="{{ opt_ph if opt_ph else 'Lütfen belirtin...' }}">
+              </div>
+              {% endif %}
+            </div>
             {% endfor %}
-          </div>
-          <div id="a_s_{{ soru.id }}" style="display:none;margin-top:6px">
-            <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
-                   style="width:100%">
           </div>
           {% elif soru.tip=="evet_hayir" %}
           <div class="secim-grup" style="flex-direction:row">
@@ -189,18 +203,23 @@
           {% set opt_mg = opt.mg if opt is mapping else 0 %}
           {% set opt_mz = opt.mz if opt is mapping else 0 %}
           {% set opt_ph = opt.ph if opt is mapping else '' %}
-          <label class="secim-opt" onclick="secimRenkle(this)">
-            <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                   data-zorunlu="{{ soru.zorunlu }}"
-                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
-                   onchange="kosulKontrol();digerKontrol(this,'t_s_{{ soru.id }}')">
-            {{ opt_m }}
-          </label>
+          <div class="opt-blok">
+            <label class="secim-opt" onclick="secimRenkle(this)">
+              <input type="radio" name="s_{{ soru.id }}" value="{{ opt_m }}"
+                     data-zorunlu="{{ soru.zorunlu }}"
+                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
+                     data-optidx="{{ loop.index0 }}"
+                     onchange="kosulKontrol();digerKontrolInline(this,'t_s_{{ soru.id }}')">
+              {{ opt_m }}
+            </label>
+            {% if opt_mg %}
+            <div class="inline-mg-wrap" id="t_s_{{ soru.id }}_{{ loop.index0 }}" style="display:none">
+              <input type="text" name="s_{{ soru.id }}_diger"
+                     placeholder="{{ opt_ph if opt_ph else 'Lütfen belirtin...' }}">
+            </div>
+            {% endif %}
+          </div>
           {% endfor %}
-        </div>
-        <div id="t_s_{{ soru.id }}" style="display:none;margin-top:6px">
-          <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
-                 style="width:100%">
         </div>
         {% elif soru.tip=="coklu" %}
         <div class="checkbox-grup">
@@ -209,17 +228,22 @@
           {% set opt_mg = opt.mg if opt is mapping else 0 %}
           {% set opt_mz = opt.mz if opt is mapping else 0 %}
           {% set opt_ph = opt.ph if opt is mapping else '' %}
-          <label class="checkbox-opt">
-            <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
-                   data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
-                   onchange="checkboxStil(this);digerKontrolCoklu(this,'t_s_{{ soru.id }}')">
-            {{ opt_m }}
-          </label>
+          <div class="opt-blok">
+            <label class="checkbox-opt">
+              <input type="checkbox" name="s_{{ soru.id }}" value="{{ opt_m }}"
+                     data-mg="{{ opt_mg }}" data-mz="{{ opt_mz }}" data-ph="{{ opt_ph | e }}"
+                     data-optidx="{{ loop.index0 }}"
+                     onchange="checkboxStil(this);digerKontrolInlineCoklu(this,'t_s_{{ soru.id }}')">
+              {{ opt_m }}
+            </label>
+            {% if opt_mg %}
+            <div class="inline-mg-wrap" id="t_s_{{ soru.id }}_{{ loop.index0 }}" style="display:none">
+              <input type="text" name="s_{{ soru.id }}_diger"
+                     placeholder="{{ opt_ph if opt_ph else 'Lütfen belirtin...' }}">
+            </div>
+            {% endif %}
+          </div>
           {% endfor %}
-        </div>
-        <div id="t_s_{{ soru.id }}" style="display:none;margin-top:6px">
-          <input type="text" name="s_{{ soru.id }}_diger" placeholder="Lütfen belirtin..."
-                 style="width:100%">
         </div>
         {% elif soru.tip=="evet_hayir" %}
         <div class="secim-grup" style="flex-direction:row">
@@ -308,36 +332,15 @@ function _dogrulaKap(kap) {
   });
   if(hata) return false;
 
-  // 2) Açık durumdaki zorunlu metin alanları (mg=1, mz=1 olan seçenek seçili)
-  kap.querySelectorAll('.soru:not([data-gizli="1"])').forEach(function(soruEl){
+  // 2) Açık inline metin alanları zorunluysa ve boşsa hata ver
+  kap.querySelectorAll('.soru:not([data-gizli="1"]) .inline-mg-wrap').forEach(function(wrap){
     if(hata) return;
-    // Tekli seçim: seçili radio'nun data-mz=1 ve data-mg=1 mi?
-    var secRadio = soruEl.querySelector('input[type=radio]:checked[data-mg="1"][data-mz="1"]');
-    if(secRadio){
-      // Bu soruda açık metin alanı var mı ve boş mu?
-      var digerDiv = soruEl.querySelector('div[id^="a_s_"], div[id^="t_s_"]');
-      if(digerDiv && digerDiv.style.display !== 'none'){
-        var txt = digerDiv.querySelector('input[type=text]');
-        if(txt && txt.value.trim() === ''){
-          _soruHataGoster(soruEl);
-          txt.focus();
-          hata = true;
-        }
-      }
-    }
-    if(hata) return;
-    // Çoklu seçim: seçili checkbox'lardan data-mg=1, data-mz=1 olanı var mı?
-    var secCbs = soruEl.querySelectorAll('input[type=checkbox]:checked[data-mg="1"][data-mz="1"]');
-    if(secCbs.length > 0){
-      var digerDiv = soruEl.querySelector('div[id^="a_s_"], div[id^="t_s_"]');
-      if(digerDiv && digerDiv.style.display !== 'none'){
-        var txt = digerDiv.querySelector('input[type=text]');
-        if(txt && txt.value.trim() === ''){
-          _soruHataGoster(soruEl);
-          txt.focus();
-          hata = true;
-        }
-      }
+    if(wrap.style.display === 'none') return;
+    var txt = wrap.querySelector('input[type=text]');
+    if(txt && txt.required && txt.value.trim() === ''){
+      _soruHataGoster(wrap.closest('.soru'));
+      txt.focus();
+      hata = true;
     }
   });
   return !hata;
@@ -412,45 +415,47 @@ function secimRenkleriRestore() {
   });
 }
 
-/* ─── Metin girişi — tek seçimli (radio): data-mg/mz/ph attribute'larına göre ─── */
-function digerKontrol(inp, divId) {
-  var mg = inp.dataset.mg === '1';
-  var mz = inp.dataset.mz === '1';
-  var ph = inp.dataset.ph || 'Lütfen belirtin...';
-  var div = document.getElementById(divId);
-  if (!div) return;
-  div.style.display = mg ? 'block' : 'none';
-  var txt = div.querySelector('input[type=text]');
-  if (txt) {
-    txt.required = mg && mz;
-    txt.placeholder = mg ? ph : 'Lütfen belirtin...';
-    if (!mg) txt.value = '';
+/* ─── Metin girişi — tekli seçim (radio): seçeneğin hemen altına inline ─── */
+function digerKontrolInline(inp, prefix) {
+  var soruEl = inp.closest('.soru');
+  // Bu soru içindeki tüm inline wrap'leri gizle ve input'ları temizle
+  soruEl.querySelectorAll('.inline-mg-wrap').forEach(function(d){
+    var t = d.querySelector('input[type=text]');
+    if(t){ t.required = false; t.value = ''; }
+    d.style.display = 'none';
+  });
+  // Seçilen seçenek mg=1 ise kendi wrap'ini göster
+  if(inp.dataset.mg === '1'){
+    var divId = prefix + '_' + inp.dataset.optidx;
+    var wrap = document.getElementById(divId);
+    if(wrap){
+      wrap.style.display = 'block';
+      var txt = wrap.querySelector('input[type=text]');
+      if(txt){
+        txt.required = inp.dataset.mz === '1';
+        txt.placeholder = inp.dataset.ph || 'Lütfen belirtin...';
+      }
+    }
   }
   setTimeout(yukseklikGonder, 100);
 }
 
-/* ─── Metin girişi — çoklu seçim (checkbox): data-mg/mz/ph attribute'larına göre ─── */
-function digerKontrolCoklu(cb, divId) {
-  var mg = cb.dataset.mg === '1';
-  if (!mg) return;
-  var div = document.getElementById(divId);
-  if (!div) return;
-  var soruEl = div.closest('.soru');
-  // Seçili mg checkbox'larını bul
-  var seciliMgCbs = Array.from(soruEl.querySelectorAll('input[type=checkbox][data-mg="1"]:checked'));
-  var enAzBiriSecili = seciliMgCbs.length > 0;
-  div.style.display = enAzBiriSecili ? 'block' : 'none';
-  var txt = div.querySelector('input[type=text]');
-  if (txt) {
-    // Zorunluluk: seçili mg'li cb'lerden herhangi biri mz=1 ise zorunlu
-    var zorunlu = seciliMgCbs.some(function(c){ return c.dataset.mz === '1'; });
-    txt.required = enAzBiriSecili && zorunlu;
-    // Placeholder: son seçilen mg'li cb'nin ph değeri (varsa)
-    if (enAzBiriSecili) {
-      var sonPh = seciliMgCbs[seciliMgCbs.length-1].dataset.ph;
-      txt.placeholder = sonPh || 'Lütfen belirtin...';
+/* ─── Metin girişi — çoklu seçim (checkbox): seçeneğin hemen altına inline ─── */
+function digerKontrolInlineCoklu(cb, prefix) {
+  if(cb.dataset.mg !== '1') return;
+  var divId = prefix + '_' + cb.dataset.optidx;
+  var wrap = document.getElementById(divId);
+  if(!wrap) return;
+  wrap.style.display = cb.checked ? 'block' : 'none';
+  var txt = wrap.querySelector('input[type=text]');
+  if(txt){
+    txt.required = cb.checked && cb.dataset.mz === '1';
+    if(cb.checked){
+      txt.placeholder = cb.dataset.ph || 'Lütfen belirtin...';
+    } else {
+      txt.value = '';
+      txt.required = false;
     }
-    if (!enAzBiriSecili) txt.value = '';
   }
   setTimeout(yukseklikGonder, 100);
 }
