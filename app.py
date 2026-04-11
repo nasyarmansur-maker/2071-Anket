@@ -522,29 +522,6 @@ def admin_sonuclar(anket_id):
     # En yoğun saat
     en_yogun_saat=max(saat_dagilim, key=lambda k: saat_dagilim[k]) if any(saat_dagilim.values()) else "—"
     ctx=gctx()
-    # Soru metadata haritası
-    soru_meta={}
-    for b in a["bolumler"]:
-        for soru in b["sorular"]:
-            sid="s_"+str(soru["id"])
-            soru_meta[sid]={
-                "metin": soru["metin"],
-                "tip":   soru["tip"],
-                "bolum": b["baslik"],
-                "sec_listesi": [x.get("m",x) if isinstance(x,dict) else x for x in soru.get("secenekler",[])]
-            }
-    # Yıldız istatistik (detaylı)
-    yildiz_istat={}
-    for k,vals in soru_istat.items():
-        if k in soru_meta and soru_meta[k]["tip"]=="yildiz":
-            tot_sayi=sum(vals.values())
-            tot_puan=sum(int(v)*cnt for v,cnt in vals.items() if v.isdigit())
-            yildiz_istat[k]={"ort":round(tot_puan/tot_sayi,2) if tot_sayi else 0,
-                             "sayi":tot_sayi,"dagilim":vals}
-    # Tarih serisi (son 30 gün)
-    tarih_serisi_sira=dict(sorted(
-        {r["tarih"]:r["sayi"] for r in tarih_sayilari}.items()
-    )[-30:])
     ctx.update({"anket":a,"yanitlar":liste,
                 "soru_istat":json.dumps(soru_istat,ensure_ascii=False),
                 "yildiz_ort":json.dumps(yildiz_ort,ensure_ascii=False),
@@ -555,11 +532,11 @@ def admin_sonuclar(anket_id):
                 "gun_dagilim":json.dumps(gun_dagilim,ensure_ascii=False),
                 "haftalik_liste":json.dumps(haftalik_liste,ensure_ascii=False),
                 "tamamlanma_ort":tamamlanma_ort,"tam_doldu":tam_doldu,
-                "soru_yanit_oran":soru_yanit_oran,
+                "soru_yanit_oran":json.dumps(soru_yanit_oran,ensure_ascii=False),
                 "filtre_tarih":filtre_tarih,"filtre_arama":filtre_arama,
                 "filtre_soru":filtre_soru,"filtre_deger":filtre_deger,
                 "toplam_yanit":len(liste),"toplam_db":toplam_db,
-                "tum_sorular":tum_sorular,"soru_meta":json.dumps(soru_meta,ensure_ascii=False),"yildiz_istat":json.dumps(yildiz_istat,ensure_ascii=False),"tarih_serisi":json.dumps(tarih_serisi_sira,ensure_ascii=False),
+                "tum_sorular":tum_sorular,
                 "ilk_tarih":ilk_tarih,"son_tarih":son_tarih,
                 "en_yogun":en_yogun,"en_yogun_saat":en_yogun_saat})
     return render_template("admin_sonuclar.html",**ctx)
