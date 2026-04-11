@@ -165,8 +165,10 @@ def get_anket(aid):
                 normalized = []
                 for item in raw:
                     if isinstance(item, str):
-                        normalized.append({"m": item, "ac": False, "zor": False})
+                        normalized.append({"m": item, "ac": False, "zor": False, "ac_metin": ""})
                     else:
+                        if "ac_metin" not in item:
+                            item["ac_metin"] = ""
                         normalized.append(item)
                 s["secenekler"] = normalized
                 # Template için düz liste de tut (backward compat)
@@ -475,6 +477,25 @@ def admin_sonuclar(anket_id):
             toplam=sum(int(v)*c2 for v,c2 in vals.items() if v.isdigit())
             sayi=sum(vals.values())
             yildiz_istat[k]={"ort":round(toplam/sayi,2) if sayi else 0,"sayi":sayi,"dagılım":vals}
+    # Haftalık istatistik (son 4 hafta)
+    from collections import defaultdict
+    haftalik=defaultdict(int)
+    for t,s in tarih_serisi.items():
+        try:
+            from datetime import datetime as _dt
+            d=_dt.strptime(t,"%Y-%m-%d")
+            hafta=d.strftime("%Y-W%W")
+            haftalik[hafta]+=s
+        except: pass
+    haftalik_sira=dict(sorted(haftalik.items())[-8:])
+    # Açık uçlu metin yanıtlarını da istat objesine ekle (ac_metin olan seçenekler)
+    ac_metin_istat={}
+    for y in tum:
+        for k,val in json.loads(y["veriler"]).items():
+            if k.startswith("ac_"):
+                ac_metin_istat.setdefault(k,[])
+                if val and val.strip():
+                    ac_metin_istat[k].append(val.strip())
     # Son 30 günün tarih serisi (sıralı)
     tarih_serisi_sira=dict(sorted(tarih_serisi.items())[-30:])
     ctx=gctx()
@@ -483,6 +504,8 @@ def admin_sonuclar(anket_id):
                 "soru_meta":json.dumps(soru_meta,ensure_ascii=False),
                 "yildiz_istat":json.dumps(yildiz_istat,ensure_ascii=False),
                 "tarih_serisi":json.dumps(tarih_serisi_sira,ensure_ascii=False),
+                "haftalik_istat":json.dumps(haftalik_sira,ensure_ascii=False),
+                "ac_metin_istat":json.dumps(ac_metin_istat,ensure_ascii=False),
                 "tarihler":[r["tarih"] for r in tarihler],
                 "filtre_tarih":filtre_tarih,"filtre_arama":filtre_arama,
                 "toplam_yanit":len(liste),"toplam_tum":toplam_tum})
@@ -619,17 +642,20 @@ def soru_ekle():
     bid=int(request.form["bolum_id"]); aid=int(request.form["anket_id"])
     tip=request.form.get("tip","yildiz")
     # Seçenekleri yeni obje formatında oluştur
-    sec_metinler = request.form.getlist("secenek")
-    sec_ac_list  = request.form.getlist("secenek_ac")      # hangi indexlerde metin alanı açılsın
-    sec_zor_list = request.form.getlist("secenek_zor")     # hangi indexlerde metin zorunlu
+    sec_metinler  = request.form.getlist("secenek")
+    sec_ac_list   = request.form.getlist("secenek_ac")      # hangi indexlerde metin alanı açılsın
+    sec_zor_list  = request.form.getlist("secenek_zor")     # hangi indexlerde metin zorunlu
+    sec_ac_metinler = request.form.getlist("secenek_ac_metin")  # açılır metin kutusu placeholder
     secs = []
     for i, m in enumerate(sec_metinler):
         m = m.strip()
         if not m: continue
+        ac_m = sec_ac_metinler[i].strip() if i < len(sec_ac_metinler) else ""
         secs.append({
-            "m":   m,
-            "ac":  str(i) in sec_ac_list,
-            "zor": str(i) in sec_zor_list
+            "m":       m,
+            "ac":      str(i) in sec_ac_list,
+            "zor":     str(i) in sec_zor_list,
+            "ac_metin": ac_m
         })
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None
@@ -656,17 +682,20 @@ def soru_ekle():
 def soru_guncelle(sid):
     aid=int(request.form["anket_id"]); tip=request.form.get("tip","yildiz")
     # Seçenekleri yeni obje formatında oluştur
-    sec_metinler = request.form.getlist("secenek")
-    sec_ac_list  = request.form.getlist("secenek_ac")      # hangi indexlerde metin alanı açılsın
-    sec_zor_list = request.form.getlist("secenek_zor")     # hangi indexlerde metin zorunlu
+    sec_metinler  = request.form.getlist("secenek")
+    sec_ac_list   = request.form.getlist("secenek_ac")      # hangi indexlerde metin alanı açılsın
+    sec_zor_list  = request.form.getlist("secenek_zor")     # hangi indexlerde metin zorunlu
+    sec_ac_metinler = request.form.getlist("secenek_ac_metin")  # açılır metin kutusu placeholder
     secs = []
     for i, m in enumerate(sec_metinler):
         m = m.strip()
         if not m: continue
+        ac_m = sec_ac_metinler[i].strip() if i < len(sec_ac_metinler) else ""
         secs.append({
-            "m":   m,
-            "ac":  str(i) in sec_ac_list,
-            "zor": str(i) in sec_zor_list
+            "m":       m,
+            "ac":      str(i) in sec_ac_list,
+            "zor":     str(i) in sec_zor_list,
+            "ac_metin": ac_m
         })
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None

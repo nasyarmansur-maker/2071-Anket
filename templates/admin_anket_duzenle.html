@@ -113,7 +113,7 @@
       <div style="flex:1;min-width:100px">
         <div style="font-size:13px;font-weight:500;line-height:1.4">{{ soru.metin }}</div>
         {% if soru.kosul_soru_id %}<div style="font-size:11px;color:var(--turuncu);margin-top:2px">🔀 Koşullu</div>{% endif %}
-        {% if soru.secenekler %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
+        {% if soru.sec_listesi %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.sec_listesi %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
       </div>
 
       <!-- Aksiyonlar -->
@@ -131,7 +131,7 @@
           data-gorsel="{{ soru.get('gorsel','') }}"
           data-kosul-sid="{{ soru.kosul_soru_id or '' }}"
           data-kosul-deger="{{ soru.kosul_deger or '' }}"
-          data-secenekler="{{ soru.secenekler | join('|||') if soru.secenekler else '' }}"
+          data-secenekler="{{ soru.secenekler | tojson | replace('"', '&quot;') }}"
         >✏️ Düzenle</button>
         <!-- Sil -->
         <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Soruyu silmek istediğinizden emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">✕</button></form>
@@ -323,7 +323,6 @@ function soruDuzenleAc(btn){
   var kosulSid   = btn.dataset.kosulSid||'';
   var kosulDeger = btn.dataset.kosulDeger||'';
   var secStr = btn.dataset.secenekler||'';
-  var secs   = secStr ? secStr.split('|||') : [];
 
   document.getElementById('soruDuzenleForm').action='/admin/soru/'+sid+'/guncelle';
   document.getElementById('sdMetin').value=metin;
@@ -342,12 +341,14 @@ function soruDuzenleAc(btn){
   var silCb=document.getElementById('sdGorselSil');
   if(silCb)silCb.checked=false;
 
-  // Seçenekler
+  // Seçenekler — JSON parse
   var liste=document.getElementById('sdSecenekListe');
   liste.innerHTML='';
+  var secs=[];
+  try{ secs=secStr?JSON.parse(secStr):[]; } catch(e){ secs=[]; }
   secs.forEach(function(sv, i) {
-    if (typeof sv === 'string') { if(sv.trim()) secenekEkle('sdSecenekListe', sv, false, false, i); }
-    else { secenekEkle('sdSecenekListe', sv.m||'', sv.ac||false, sv.zor||false, i); }
+    if (typeof sv === 'string') { if(sv.trim()) secenekEkle('sdSecenekListe', sv, false, false, i, ''); }
+    else { secenekEkle('sdSecenekListe', sv.m||'', sv.ac||false, sv.zor||false, i, sv.ac_metin||''); }
   });
 
   // Koşul
@@ -365,12 +366,13 @@ function tipDegis(p){
   if(d)d.style.display=goster?'block':'none';
 }
 
-function secenekEkle(listeId, deger, ac, zor, idx) {
+function secenekEkle(listeId, deger, ac, zor, idx, acMetin) {
   var liste = document.getElementById(listeId);
   var i = liste ? liste.querySelectorAll('.secenek-satir').length : 0;
-  deger = deger !== undefined ? deger : '';
-  ac  = !!ac;
-  zor = !!zor;
+  deger   = deger   !== undefined ? deger   : '';
+  ac      = !!ac;
+  zor     = !!zor;
+  acMetin = acMetin || '';
   var div = document.createElement('div');
   div.className = 'secenek-satir';
   div.style.cssText = 'flex-direction:column;gap:4px;background:var(--gri-ac);padding:6px 8px;border-radius:var(--r);margin-bottom:6px';
@@ -379,15 +381,23 @@ function secenekEkle(listeId, deger, ac, zor, idx) {
       + '<input type="text" name="secenek" value="' + String(deger).replace(/"/g,'&quot;') + '" placeholder="Seçenek metni..." style="flex:1">'
       + '<button type="button" onclick="this.closest('.secenek-satir').remove()" class="btn btn-tehlike btn-kucuk">✕</button>'
     + '</div>'
-    + '<div style="display:flex;gap:14px;font-size:12px;flex-wrap:wrap">'
+    + '<div style="display:flex;gap:14px;font-size:12px;flex-wrap:wrap;align-items:center">'
       + '<label style="display:flex;align-items:center;gap:4px;cursor:pointer">'
-        + '<input type="checkbox" name="secenek_ac" value="' + i + '"' + (ac ? ' checked' : '') + ' style="width:14px;height:14px;accent-color:var(--ana)">'
+        + '<input type="checkbox" name="secenek_ac" value="' + i + '"' + (ac ? ' checked' : '') + ' onchange="secAcToggle(this)" style="width:14px;height:14px;accent-color:var(--ana)">'
         + ' Metin alanı aç</label>'
       + '<label style="display:flex;align-items:center;gap:4px;cursor:pointer">'
         + '<input type="checkbox" name="secenek_zor" value="' + i + '"' + (zor ? ' checked' : '') + ' style="width:14px;height:14px;accent-color:var(--kirmizi)">'
         + ' Metin zorunlu</label>'
+    + '</div>'
+    + '<div class="sec-ac-metin-wrap" style="display:' + (ac ? 'block' : 'none') + ';margin-top:2px">'
+      + '<input type="text" name="secenek_ac_metin" value="' + String(acMetin).replace(/"/g,'&quot;') + '" placeholder="Metin kutusu etiketi (ör: Lütfen açıklayınız...)" style="width:100%;font-size:12px">'
     + '</div>';
   if(liste) liste.appendChild(div);
+}
+
+function secAcToggle(cb) {
+  var wrap = cb.closest('.secenek-satir').querySelector('.sec-ac-metin-wrap');
+  if(wrap) wrap.style.display = cb.checked ? 'block' : 'none';
 }
 
 function kosulSecenekDoldur(p,secilenDeger){

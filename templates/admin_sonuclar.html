@@ -3,34 +3,50 @@
 {% block baslik %}Sonuçlar — {{ anket.baslik }}{% endblock %}
 {% block ekstra_css %}
 <style>
-.ozet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.5rem}
-.ozet-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1rem;text-align:center}
+.ozet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.ozet-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1rem 1rem .85rem;text-align:center;position:relative;overflow:hidden}
+.ozet-kart::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--ana)}
 .ozet-sayi{font-size:2rem;font-weight:800;color:var(--ana);line-height:1.1}
-.ozet-lbl{font-size:12px;color:var(--metin-ik);margin-top:4px}
-.grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1rem;margin-bottom:1.5rem}
-.grafik-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1rem}
-.grafik-kart h4{font-size:13px;font-weight:700;margin-bottom:4px;line-height:1.3}
-.grafik-kart .bolum-tag{font-size:11px;color:var(--metin-uc);margin-bottom:.75rem}
-.yildiz-ozet{display:flex;align-items:center;gap:12px;margin-bottom:.75rem}
-.yildiz-sayi{font-size:2.5rem;font-weight:800;color:var(--ana);line-height:1}
+.ozet-lbl{font-size:11px;color:var(--metin-ik);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.ozet-sub{font-size:11px;color:var(--metin-uc);margin-top:2px}
+.tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;border-bottom:2px solid var(--kenar);padding-bottom:0}
+.tab-buton{padding:8px 16px;border-radius:var(--r) var(--r) 0 0;border:1px solid transparent;border-bottom:none;background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--metin-ik);transition:all .15s;margin-bottom:-2px}
+.tab-buton:hover{background:var(--gri-ac);color:var(--metin)}
+.tab-buton.aktif{background:var(--yuzey);color:var(--ana);border-color:var(--kenar);border-bottom-color:var(--yuzey);font-weight:700}
+.grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:1rem;margin-bottom:1rem}
+.grafik-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1.1rem}
+.grafik-kart h4{font-size:13px;font-weight:700;margin-bottom:3px;line-height:1.35;color:var(--metin)}
+.bolum-tag{font-size:11px;color:var(--metin-uc);margin-bottom:.85rem;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.bolum-tag span{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.yildiz-ozet{display:flex;align-items:center;gap:14px;margin-bottom:.85rem}
+.yildiz-buyuk{font-size:2.6rem;font-weight:800;color:var(--ana);line-height:1}
+.yildiz-alti{font-size:11px;color:var(--metin-ik);margin-top:3px}
 .yildiz-bar-wrap{flex:1}
-.yildiz-bar-satir{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:12px}
-.yildiz-bar-bg{flex:1;height:8px;background:var(--gri-ac);border-radius:4px;overflow:hidden}
-.yildiz-bar-dolu{height:100%;background:var(--ana);border-radius:4px;transition:width .6s}
-.tab-buton{padding:6px 14px;border-radius:20px;border:1px solid var(--kenar);background:var(--gri-ac);cursor:pointer;font-size:13px;font-weight:500}
-.tab-buton.aktif{background:var(--ana);color:#fff;border-color:var(--ana)}
-.metin-kutu{background:var(--gri-ac);border-radius:var(--r);padding:8px 10px;font-size:13px;margin-bottom:6px;border-left:3px solid var(--ana)}
-.kelime-bulut span{display:inline-block;margin:3px;padding:4px 10px;border-radius:20px;font-weight:600;cursor:default}
-.yanit-satir{border-bottom:1px solid var(--kenar);padding:.75rem 0}
+.yildiz-bar-satir{display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px}
+.yildiz-bar-bg{flex:1;height:9px;background:var(--gri-ac);border-radius:5px;overflow:hidden}
+.yildiz-bar-dolu{height:100%;background:linear-gradient(90deg,#f59e0b,#fbbf24);border-radius:5px;transition:width .7s}
+.progress-satir{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:13px}
+.progress-etiket{min-width:110px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress-bg{flex:1;height:13px;background:var(--gri-ac);border-radius:7px;overflow:hidden}
+.progress-dolu{height:100%;border-radius:7px;transition:width .7s}
+.progress-sayi{font-size:12px;color:var(--metin-ik);white-space:nowrap;min-width:60px;text-align:right}
+.metin-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1.1rem;margin-bottom:1rem}
+.metin-kutu{background:var(--gri-ac);border-radius:var(--r);padding:9px 12px;font-size:13px;margin-bottom:7px;border-left:3px solid var(--ana);line-height:1.5}
+.metin-kutu:last-child{margin-bottom:0}
+.yanit-satir{border-bottom:1px solid var(--kenar);padding:.8rem 0}
 .yanit-satir:last-child{border-bottom:none}
 .satir-baslik{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.badge-tarih{font-size:11px;background:var(--gri-ac);padding:2px 8px;border-radius:20px;color:var(--metin-ik)}
+.badge-tarih{font-size:11px;background:var(--gri-ac);padding:2px 9px;border-radius:20px;color:var(--metin-ik)}
 .filtre-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
-.progress-satir{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
-.progress-etiket{min-width:120px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.progress-bg{flex:1;height:12px;background:var(--gri-ac);border-radius:6px;overflow:hidden;position:relative}
-.progress-dolu{height:100%;border-radius:6px;transition:width .6s ease;background:var(--ana)}
-.progress-sayi{font-size:12px;color:var(--metin-ik);white-space:nowrap}
+.soru-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.soru-nav-btn{padding:5px 11px;border-radius:20px;border:1px solid var(--kenar);background:var(--gri-ac);cursor:pointer;font-size:12px;color:var(--metin-ik);transition:all .15s}
+.soru-nav-btn:hover,.soru-nav-btn.aktif{background:var(--ana);color:#fff;border-color:var(--ana)}
+.insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem}
+.insight-kart{background:var(--yuzey);border-radius:var(--r-lg);padding:1rem;border:1px solid var(--kenar);border-top:3px solid var(--ana)}
+.insight-baslik{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--metin-ik);margin-bottom:.5rem}
+.insight-deger{font-size:1.3rem;font-weight:800;color:var(--ana)}
+.insight-alt{font-size:12px;color:var(--metin-ik);margin-top:3px;line-height:1.4}
+.trend-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1.1rem;margin-bottom:1rem}
 </style>
 {% endblock %}
 {% block admin_icerik %}
@@ -42,24 +58,25 @@
   <a href="/admin/qr/{{ anket.id }}" class="btn btn-gri btn-kucuk">📱 QR</a>
 </div>
 
-<!-- ── Özet Kartlar ── -->
+<!-- Özet -->
 <div class="ozet-grid">
   <div class="ozet-kart"><div class="ozet-sayi" id="ozetToplam">—</div><div class="ozet-lbl">Toplam Yanıt</div></div>
-  <div class="ozet-kart"><div class="ozet-sayi" id="ozetBugün">—</div><div class="ozet-lbl">Bugün</div></div>
+  <div class="ozet-kart"><div class="ozet-sayi" id="ozetBugun">—</div><div class="ozet-lbl">Bugün</div></div>
   <div class="ozet-kart"><div class="ozet-sayi" id="ozetHafta">—</div><div class="ozet-lbl">Bu Hafta</div></div>
-  <div class="ozet-kart"><div class="ozet-sayi" id="ozetOrt" style="font-size:1.5rem">—</div><div class="ozet-lbl">Günlük Ortalama</div></div>
-  <div class="ozet-kart"><div class="ozet-sayi" id="ozetYildiz" style="font-size:1.4rem;color:var(--sari, #f59e0b)">—</div><div class="ozet-lbl">Genel Memnuniyet ★</div></div>
+  <div class="ozet-kart"><div class="ozet-sayi" id="ozetOrt" style="font-size:1.4rem">—</div><div class="ozet-lbl">Günlük Ort.</div><div class="ozet-sub" id="ozetGunSub"></div></div>
+  <div class="ozet-kart"><div class="ozet-sayi" id="ozetYildiz" style="font-size:1.3rem;color:#f59e0b">—</div><div class="ozet-lbl">Genel Memnuniyet</div></div>
+  <div class="ozet-kart"><div class="ozet-sayi" id="ozetSorular" style="font-size:1.3rem">—</div><div class="ozet-lbl">Yanıtlanan Sorular</div></div>
 </div>
 
-<!-- ── Sekme Navigasyon ── -->
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+<!-- Sekmeler -->
+<div class="tab-bar">
   <button class="tab-buton aktif" onclick="sekmeGoster('grafik',this)">📊 Grafikler</button>
   <button class="tab-buton" onclick="sekmeGoster('metin',this)">💬 Yazılı Yanıtlar</button>
-  <button class="tab-buton" onclick="sekmeGoster('tablo',this)">📋 Ham Veriler</button>
   <button class="tab-buton" onclick="sekmeGoster('trend',this)">📈 Trend</button>
+  <button class="tab-buton" onclick="sekmeGoster('tablo',this)">📋 Ham Veriler</button>
 </div>
 
-<!-- ── Filtre ── -->
+<!-- Filtre -->
 <div class="filtre-bar kart" style="padding:.75rem">
   <form method="GET" action="" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%">
     <select name="tarih" style="width:auto" onchange="this.form.submit()">
@@ -67,245 +84,319 @@
       {% for t in tarihler %}<option value="{{ t }}" {% if filtre_tarih==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
     </select>
     <input type="text" name="arama" value="{{ filtre_arama }}" placeholder="Yanıtlarda ara..." style="flex:1;min-width:140px">
-    <button type="submit" class="btn btn-ana btn-kucuk">Filtrele</button>
+    <button type="submit" class="btn btn-ana btn-kucuk">🔍 Filtrele</button>
     {% if filtre_tarih or filtre_arama %}<a href="/admin/sonuclar/{{ anket.id }}" class="btn btn-gri btn-kucuk">✕ Temizle</a>{% endif %}
     <span style="font-size:13px;color:var(--metin-ik);margin-left:auto">
-      <b>{{ toplam_yanit }}</b> sonuç (toplam: <b>{{ toplam_tum }}</b>)
+      <b>{{ toplam_yanit }}</b> sonuç / toplam <b>{{ toplam_tum }}</b>
     </span>
   </form>
 </div>
 
-<!-- ══ SEKME: GRAFİKLER ══ -->
+<!-- SEKME: GRAFİKLER -->
 <div id="sekme-grafik">
+  <div class="insight-grid" id="insightlar" style="display:none"></div>
+  <div style="font-size:12px;color:var(--metin-ik);margin-bottom:6px;font-weight:600">🔎 Soruya göre filtrele:</div>
+  <div class="soru-nav" id="soruNav">
+    <button class="soru-nav-btn aktif" onclick="soruFiltre(null,this)">Tümü</button>
+  </div>
   <div class="grafik-grid" id="grafikler"></div>
 </div>
 
-<!-- ══ SEKME: YAZILI YANITLAR ══ -->
+<!-- SEKME: YAZILI YANITLAR -->
 <div id="sekme-metin" style="display:none">
-  <div id="metinler" class="kart"></div>
+  <div id="metinler"></div>
 </div>
 
-<!-- ══ SEKME: HAM VERİ ══ -->
+<!-- SEKME: TREND -->
+<div id="sekme-trend" style="display:none">
+  <div class="trend-kart">
+    <div style="font-size:14px;font-weight:700;margin-bottom:1rem">📈 Günlük Yanıt Sayısı (Son 30 Gün)</div>
+    <canvas id="trendCanvas" height="110"></canvas>
+  </div>
+  <div class="trend-kart">
+    <div style="font-size:14px;font-weight:700;margin-bottom:1rem">📅 Haftalık Yanıt Dağılımı</div>
+    <canvas id="haftaCanvas" height="110"></canvas>
+  </div>
+</div>
+
+<!-- SEKME: HAM VERİ -->
 <div id="sekme-tablo" style="display:none">
   <div class="kart">
     {% if yanitlar %}
+    <div style="font-size:13px;color:var(--metin-ik);margin-bottom:.75rem">{{ toplam_yanit }} yanıt gösteriliyor</div>
     {% for y in yanitlar %}
     <div class="yanit-satir">
       <div class="satir-baslik">
-        <span style="font-size:13px;font-weight:600">Yanıt #{{ y.id }}</span>
+        <span style="font-size:13px;font-weight:700">Yanıt #{{ y.id }}</span>
         <div style="display:flex;gap:6px;align-items:center">
-          <span class="badge-tarih">{{ y.tarih }} {{ y.saat }}</span>
-          <form method="POST" action="/admin/yanit_sil/{{ y.id }}"
-                onsubmit="return confirm('Bu yanıtı silmek istediğinizden emin misiniz?')">
-            <button type="submit" class="btn btn-tehlike btn-kucuk" style="padding:2px 7px">✕</button>
+          <span class="badge-tarih">📅 {{ y.tarih }} {{ y.saat }}</span>
+          <form method="POST" action="/admin/yanit_sil/{{ y.id }}" onsubmit="return confirm('Bu yanıtı silmek istediğinizden emin misiniz?')">
+            <button type="submit" class="btn btn-tehlike btn-kucuk" style="padding:2px 8px">✕ Sil</button>
           </form>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
         {% for k,v in y.veriler.items() %}
-        <span style="font-size:12px;background:var(--gri-ac);padding:3px 8px;border-radius:var(--r)">
-          <b>{{ k }}:</b> {{ v }}
+        {% if v and v|string|trim %}
+        <span style="font-size:12px;background:var(--gri-ac);padding:3px 9px;border-radius:var(--r);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ k }}: {{ v }}">
+          <b style="color:var(--metin-ik)">{{ k }}:</b> {{ v }}
         </span>
+        {% endif %}
         {% endfor %}
       </div>
     </div>
     {% endfor %}
     {% else %}
-    <div style="text-align:center;padding:2rem;color:var(--metin-ik)">Henüz yanıt yok</div>
+    <div style="text-align:center;padding:2.5rem;color:var(--metin-ik)">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">📭</div>
+      <div>Henüz yanıt yok</div>
+    </div>
     {% endif %}
-  </div>
-</div>
-
-<!-- ══ SEKME: TREND ══ -->
-<div id="sekme-trend" style="display:none">
-  <div class="kart">
-    <div style="font-size:14px;font-weight:700;margin-bottom:1rem">📈 Günlük Yanıt Sayısı (Son 30 Gün)</div>
-    <canvas id="trendCanvas" height="100"></canvas>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-var soruIstat  = {{ soru_istat|safe }};
-var soruMeta   = {{ soru_meta|safe }};
-var yildizIstat= {{ yildiz_istat|safe }};
-var tarihSerisi= {{ tarih_serisi|safe }};
-var toplamTum  = {{ toplam_tum }};
-
-/* ── Renk paleti ── */
+var soruIstat    = {{ soru_istat|safe }};
+var soruMeta     = {{ soru_meta|safe }};
+var yildizIstat  = {{ yildiz_istat|safe }};
+var tarihSerisi  = {{ tarih_serisi|safe }};
+var haftalikIstat= {{ haftalik_istat|safe }};
+var toplamTum    = {{ toplam_tum }};
 var RENKLER=['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#6366f1'];
+var trendChart=null, haftaChart=null;
 
-/* ── Sekme geçiş ── */
-function sekmeGoster(id, btn) {
-  ['grafik','metin','tablo','trend'].forEach(function(s) {
-    document.getElementById('sekme-'+s).style.display = s===id?'block':'none';
+function sekmeGoster(id,btn){
+  ['grafik','metin','tablo','trend'].forEach(function(s){
+    document.getElementById('sekme-'+s).style.display=s===id?'block':'none';
   });
-  document.querySelectorAll('.tab-buton').forEach(function(b){ b.classList.remove('aktif'); });
-  if(btn) btn.classList.add('aktif');
-  if(id==='trend') trendCiz();
+  document.querySelectorAll('.tab-buton').forEach(function(b){b.classList.remove('aktif');});
+  if(btn)btn.classList.add('aktif');
+  if(id==='trend')trendleriCiz();
 }
 
-/* ── Özet hesapla ── */
-function ozetHesapla() {
-  var bugun = new Date().toISOString().slice(0,10);
-  var haftaOnce = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  var bugunSayi=0, haftaSayi=0;
-  Object.keys(tarihSerisi).forEach(function(t) {
-    if(t===bugun) bugunSayi+=tarihSerisi[t];
-    if(t>=haftaOnce) haftaSayi+=tarihSerisi[t];
+function ozetHesapla(){
+  var bugun=new Date().toISOString().slice(0,10);
+  var haftaOnce=new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  var bugunS=0,haftaS=0;
+  Object.keys(tarihSerisi).forEach(function(t){
+    if(t===bugun)bugunS+=tarihSerisi[t];
+    if(t>=haftaOnce)haftaS+=tarihSerisi[t];
   });
   var gunSayi=Object.keys(tarihSerisi).length||1;
   document.getElementById('ozetToplam').textContent=toplamTum;
-  document.getElementById('ozetBugün').textContent=bugunSayi;
-  document.getElementById('ozetHafta').textContent=haftaSayi;
+  document.getElementById('ozetBugun').textContent=bugunS;
+  document.getElementById('ozetHafta').textContent=haftaS;
   document.getElementById('ozetOrt').textContent=(toplamTum/gunSayi).toFixed(1);
-  // Genel yıldız ortalaması
-  var yOrtToplam=0, yOrtAdet=0;
-  Object.values(yildizIstat).forEach(function(y){ yOrtToplam+=y.ort; yOrtAdet++; });
-  document.getElementById('ozetYildiz').textContent = yOrtAdet>0 ? (yOrtToplam/yOrtAdet).toFixed(2)+'★' : '—';
+  document.getElementById('ozetGunSub').textContent=gunSayi+' aktif gün';
+  var yT=0,yA=0;
+  Object.values(yildizIstat).forEach(function(y){yT+=y.ort;yA++;});
+  document.getElementById('ozetYildiz').textContent=yA>0?(yT/yA).toFixed(2)+'★':'—';
+  var cevaplanmis=Object.keys(soruIstat).length;
+  var toplamSoru=Object.keys(soruMeta).length;
+  document.getElementById('ozetSorular').textContent=cevaplanmis+'/'+toplamSoru;
 }
 
-/* ── Grafikler ── */
-function grafikleriCiz() {
+function insightlariOlustur(){
+  var ig=document.getElementById('insightlar');
+  var insights=[];
+  var enP={soru:'',opt:'',sayi:0};
+  Object.keys(soruIstat).forEach(function(sid){
+    if(!soruMeta[sid]||soruMeta[sid].tip==='metin'||soruMeta[sid].tip==='sayi')return;
+    Object.entries(soruIstat[sid]).forEach(function(e){
+      if(e[1]>enP.sayi){enP.soru=soruMeta[sid].metin.slice(0,28);enP.opt=e[0];enP.sayi=e[1];}
+    });
+  });
+  if(enP.opt)insights.push({b:'🏆 En Popüler Yanıt',d:'"'+enP.opt+'"',a:enP.soru+'…'});
+  var enY={ort:0,metin:''};
+  Object.keys(yildizIstat).forEach(function(k){
+    if(yildizIstat[k].ort>enY.ort){enY.ort=yildizIstat[k].ort;enY.metin=soruMeta[k]?soruMeta[k].metin.slice(0,32):'';}
+  });
+  if(enY.ort>0)insights.push({b:'⭐ En Yüksek Puan',d:enY.ort+'★',a:enY.metin});
+  var enD={ort:6,metin:''};
+  Object.keys(yildizIstat).forEach(function(k){
+    if(yildizIstat[k].sayi>0&&yildizIstat[k].ort<enD.ort){enD.ort=yildizIstat[k].ort;enD.metin=soruMeta[k]?soruMeta[k].metin.slice(0,32):'';}
+  });
+  if(enD.ort<6)insights.push({b:'📉 Gelişim Alanı',d:enD.ort+'★',a:enD.metin});
+  if(!insights.length)return;
+  ig.style.display='grid';
+  insights.forEach(function(ins){
+    var d=document.createElement('div');
+    d.className='insight-kart';
+    d.innerHTML='<div class="insight-baslik">'+ins.b+'</div><div class="insight-deger">'+ins.d+'</div><div class="insight-alt">'+ins.a+'</div>';
+    ig.appendChild(d);
+  });
+}
+
+function soruNavOlustur(){
+  var nav=document.getElementById('soruNav');
+  Object.keys(soruMeta).forEach(function(sid,i){
+    var m=soruMeta[sid];
+    var btn=document.createElement('button');
+    btn.className='soru-nav-btn';
+    btn.title=m.metin;
+    btn.textContent=(i+1)+'. '+m.metin.slice(0,24)+(m.metin.length>24?'…':'');
+    btn.onclick=function(){soruFiltre(sid,btn);};
+    nav.appendChild(btn);
+  });
+}
+
+function soruFiltre(sid,btn){
+  document.querySelectorAll('.soru-nav-btn').forEach(function(b){b.classList.remove('aktif');});
+  if(btn)btn.classList.add('aktif');
+  document.querySelectorAll('.grafik-kart[data-sid]').forEach(function(k){
+    k.style.display=(!sid||k.dataset.sid===sid)?'block':'none';
+  });
+}
+
+function escH(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function grafikleriCiz(){
   var kap=document.getElementById('grafikler');
   kap.innerHTML='';
   var metinKap=document.getElementById('metinler');
   metinKap.innerHTML='';
-  var metinGruplar={};
 
-  Object.keys(soruMeta).forEach(function(sid, idx) {
+  Object.keys(soruMeta).forEach(function(sid,idx){
     var meta=soruMeta[sid];
     var vals=soruIstat[sid]||{};
     var toplam=Object.values(vals).reduce(function(a,b){return a+b;},0);
 
-    // ── Metin soruları için kelime/cümle listesi ──
-    if(meta.tip==='metin'||meta.tip==='sayi') {
-      var group=meta.bolum+' — '+meta.metin;
-      metinGruplar[group]=metinGruplar[group]||[];
-      Object.keys(vals).forEach(function(v){ metinGruplar[group].push(v); });
+    if(meta.tip==='metin'||meta.tip==='sayi'){
+      var yanitlar=Object.keys(vals).filter(function(v){return v&&v.trim();});
+      if(!yanitlar.length)return;
+      var d=document.createElement('div');
+      d.className='metin-kart';
+      var html='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:.85rem">';
+      html+='<div><div style="font-size:14px;font-weight:700;line-height:1.35">'+escH(meta.metin)+'</div>';
+      html+='<div class="bolum-tag" style="margin-top:5px;margin-bottom:0"><span style="background:var(--ana-ac);color:var(--ana)">'+escH(meta.bolum)+'</span><span style="background:#e8f5e8;color:#2d7a2d">📝 Açık Uçlu</span></div></div>';
+      html+='<div style="text-align:right;flex-shrink:0"><div style="font-size:1.6rem;font-weight:800;color:var(--ana)">'+yanitlar.length+'</div><div style="font-size:11px;color:var(--metin-ik)">yanıt</div></div>';
+      html+='</div>';
+      html+='<input type="text" placeholder="Bu yanıtlarda ara…" oninput="metenAra(this)" style="width:100%;font-size:12px;margin-bottom:.75rem;box-sizing:border-box">';
+      html+='<div class="metin-liste">';
+      yanitlar.forEach(function(v){html+='<div class="metin-kutu">'+escH(v)+'</div>';});
+      html+='</div>';
+      d.innerHTML=html;
+      metinKap.appendChild(d);
       return;
     }
 
     var div=document.createElement('div');
     div.className='grafik-kart';
+    div.dataset.sid=sid;
 
-    // Yıldız sorusu
-    if(meta.tip==='yildiz' && yildizIstat[sid]) {
+    if(meta.tip==='yildiz'&&yildizIstat[sid]){
       var y=yildizIstat[sid];
-      var html='<h4>'+meta.metin+'</h4><div class="bolum-tag">'+meta.bolum+'</div>';
-      html+='<div class="yildiz-ozet"><div class="yildiz-sayi">'+y.ort+'<span style="font-size:1rem;color:var(--sari,#f59e0b)">★</span></div>';
+      var html='<h4>'+escH(meta.metin)+'</h4>';
+      html+='<div class="bolum-tag"><span style="background:var(--ana-ac);color:var(--ana)">'+escH(meta.bolum)+'</span><span style="background:#fff8e8;color:#854F0B">⭐ Yıldız</span></div>';
+      html+='<div class="yildiz-ozet">';
+      html+='<div><div class="yildiz-buyuk">'+y.ort+'</div>';
+      html+='<div style="display:flex;gap:2px;margin-top:4px">';
+      for(var s=1;s<=5;s++){
+        html+='<span style="color:'+(s<=Math.round(y.ort)?'#f59e0b':'#d1d5db')+';font-size:17px">★</span>';
+      }
+      html+='</div><div class="yildiz-alti">'+y.sayi+' yanıt</div></div>';
       html+='<div class="yildiz-bar-wrap">';
-      for(var i=5;i>=1;i--) {
+      for(var i=5;i>=1;i--){
         var cnt=y.dagılım[String(i)]||0;
         var pct=y.sayi>0?Math.round(cnt/y.sayi*100):0;
-        html+='<div class="yildiz-bar-satir"><span style="width:14px;text-align:right">'+i+'★</span>';
+        html+='<div class="yildiz-bar-satir"><span style="width:16px;text-align:right;color:var(--metin-ik)">'+i+'</span>';
+        html+='<span style="color:#f59e0b;font-size:12px">★</span>';
         html+='<div class="yildiz-bar-bg"><div class="yildiz-bar-dolu" style="width:'+pct+'%"></div></div>';
-        html+='<span style="min-width:36px;color:var(--metin-ik)">'+cnt+' (%'+pct+')</span></div>';
+        html+='<span style="min-width:44px;color:var(--metin-ik);font-size:11px">'+cnt+' (%'+pct+')</span></div>';
       }
       html+='</div></div>';
-      html+='<div style="font-size:12px;color:var(--metin-ik);text-align:right">'+y.sayi+' yanıt</div>';
+      html+='<div style="margin-top:.75rem;border-top:1px solid var(--kenar);padding-top:.75rem"><canvas id="yl_'+sid+'" height="65"></canvas></div>';
       div.innerHTML=html;
       kap.appendChild(div);
+      setTimeout(function(s2,ydata){return function(){
+        var cnv=document.getElementById('yl_'+s2);
+        if(!cnv)return;
+        new Chart(cnv.getContext('2d'),{type:'bar',
+          data:{labels:['1★','2★','3★','4★','5★'],
+            datasets:[{data:[ydata.dagılım['1']||0,ydata.dagılım['2']||0,ydata.dagılım['3']||0,ydata.dagılım['4']||0,ydata.dagılım['5']||0],
+              backgroundColor:['#ef4444','#f97316','#f59e0b','#84cc16','#10b981'],borderRadius:5,borderWidth:0}]},
+          options:{responsive:true,plugins:{legend:{display:false}},
+            scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}}}}}});
+      };}(sid,y),150);
       return;
     }
 
-    // Seçim veya çoklu — progress bar grafik
-    var etiketler=meta.sec_listesi.length>0?meta.sec_listesi:Object.keys(vals);
-    if(etiketler.length===0) return;
-
-    var html2='<h4>'+meta.metin+'</h4><div class="bolum-tag">'+meta.bolum+'</div>';
-    html2+='<div style="margin-bottom:8px;font-size:12px;color:var(--metin-ik)">'+toplam+' yanıt</div>';
-
-    // Sırala: en çok seçilenden en aza
-    var sirali=etiketler.slice().sort(function(a,b){ return (vals[b]||0)-(vals[a]||0); });
-    sirali.forEach(function(et, i) {
+    var etiketler=meta.sec_listesi&&meta.sec_listesi.length>0?meta.sec_listesi:Object.keys(vals);
+    if(!etiketler.length)return;
+    var tipAd={'secim':'🔘 Tek Seçim','coklu':'☑️ Çoklu','evet_hayir':'👍 E/H'};
+    var html2='<h4>'+escH(meta.metin)+'</h4>';
+    html2+='<div class="bolum-tag"><span style="background:var(--ana-ac);color:var(--ana)">'+escH(meta.bolum)+'</span><span style="background:#e8f0ff;color:#185FA5">'+(tipAd[meta.tip]||meta.tip)+'</span></div>';
+    html2+='<div style="font-size:12px;color:var(--metin-ik);margin-bottom:.75rem">'+toplam+' yanıt</div>';
+    var sirali=etiketler.slice().sort(function(a,b){return (vals[b]||0)-(vals[a]||0);});
+    sirali.forEach(function(et,i){
       var cnt=vals[et]||0;
       var pct=toplam>0?Math.round(cnt/toplam*100):0;
-      var renk=RENKLER[i%RENKLER.length];
       html2+='<div class="progress-satir">';
-      html2+='<div class="progress-etiket" title="'+et+'">'+et+'</div>';
-      html2+='<div class="progress-bg"><div class="progress-dolu" style="width:'+pct+'%;background:'+renk+'"></div></div>';
-      html2+='<div class="progress-sayi">'+cnt+' <span style="color:var(--metin-uc)">%'+pct+'</span></div>';
+      html2+='<div class="progress-etiket" title="'+escH(et)+'">'+escH(et)+'</div>';
+      html2+='<div class="progress-bg"><div class="progress-dolu" style="width:'+pct+'%;background:'+RENKLER[i%RENKLER.length]+'"></div></div>';
+      html2+='<div class="progress-sayi"><b>'+cnt+'</b> <span style="color:var(--metin-uc)">%'+pct+'</span></div>';
       html2+='</div>';
     });
-
-    // Küçük pasta grafik de ekle (5'ten az seçenekte)
-    if(etiketler.length<=6) {
-      html2+='<div style="margin-top:.75rem;max-width:200px;margin-left:auto;margin-right:auto"><canvas id="c_'+sid+'" height="200"></canvas></div>';
+    if(etiketler.length<=7){
+      html2+='<div style="margin-top:1rem;max-width:180px;margin-left:auto;margin-right:auto"><canvas id="c_'+sid+'" height="180"></canvas></div>';
     }
     div.innerHTML=html2;
     kap.appendChild(div);
-
-    // Pasta chart oluştur
-    if(etiketler.length<=6) {
-      setTimeout(function(s,et,v){ return function(){
+    if(etiketler.length<=7){
+      setTimeout(function(s,et,v){return function(){
         var cnv=document.getElementById('c_'+s);
-        if(!cnv) return;
-        new Chart(cnv.getContext('2d'),{
-          type:'doughnut',
-          data:{
-            labels:et,
-            datasets:[{data:et.map(function(e){return v[e]||0;}),
-              backgroundColor:RENKLER.slice(0,et.length),borderWidth:2}]
-          },
-          options:{plugins:{legend:{display:et.length<=4,position:'bottom',
-            labels:{font:{size:11},padding:8}}},cutout:'55%'}
-        });
-      };}(sid,sirali,vals), 100);
+        if(!cnv)return;
+        new Chart(cnv.getContext('2d'),{type:'doughnut',
+          data:{labels:et,datasets:[{data:et.map(function(e){return v[e]||0;}),
+            backgroundColor:RENKLER.slice(0,et.length),borderWidth:2,borderColor:'var(--yuzey)'}]},
+          options:{plugins:{legend:{display:et.length<=5,position:'bottom',labels:{font:{size:11},padding:8,boxWidth:12}}},cutout:'58%'}});
+      };}(sid,sirali,vals),150);
     }
   });
 
-  // Metin yanıtları
-  Object.keys(metinGruplar).forEach(function(grup) {
-    var yanitlar=metinGruplar[grup].filter(function(v){return v&&v.trim();});
-    if(yanitlar.length===0) return;
-    var d=document.createElement('div');
-    d.style.cssText='margin-bottom:1.5rem';
-    var html='<div style="font-size:14px;font-weight:700;margin-bottom:.75rem;padding-bottom:6px;border-bottom:2px solid var(--ana-ac)">'+grup+'</div>';
-    html+='<div style="font-size:12px;color:var(--metin-ik);margin-bottom:.75rem">'+yanitlar.length+' yanıt</div>';
-    yanitlar.forEach(function(v,i) {
-      html+='<div class="metin-kutu">'+v+'</div>';
-    });
-    d.innerHTML=html;
-    metinKap.appendChild(d);
-  });
-  if(!metinKap.children.length) {
-    metinKap.innerHTML='<div style="text-align:center;padding:2rem;color:var(--metin-ik)">Yazılı yanıt bulunmuyor.</div>';
+  if(!metinKap.children.length){
+    metinKap.innerHTML='<div class="kart" style="text-align:center;padding:2.5rem;color:var(--metin-ik)">📭 Yazılı yanıt bulunmuyor.</div>';
   }
 }
 
-/* ── Trend grafiği ── */
-var trendChart=null;
-function trendCiz() {
-  if(trendChart) return;
-  var labels=Object.keys(tarihSerisi);
-  var data=Object.values(tarihSerisi);
-  if(!labels.length){ document.getElementById('trendCanvas').parentElement.innerHTML+='<p style="color:var(--metin-ik);text-align:center">Veri yok.</p>'; return; }
-  trendChart=new Chart(document.getElementById('trendCanvas').getContext('2d'),{
-    type:'line',
-    data:{
-      labels:labels,
-      datasets:[{
-        label:'Günlük Yanıt',
-        data:data,
-        borderColor:RENKLER[0],
-        backgroundColor:RENKLER[0]+'22',
-        tension:.3,fill:true,pointRadius:4,pointHoverRadius:7
-      }]
-    },
-    options:{
-      responsive:true,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{grid:{display:false},ticks:{maxTicksLimit:10,font:{size:11}}},
-        y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}}}
-      }
-    }
+function metenAra(inp){
+  var ara=inp.value.toLowerCase();
+  var liste=inp.nextElementSibling;
+  if(!liste)return;
+  liste.querySelectorAll('.metin-kutu').forEach(function(k){
+    k.style.display=k.textContent.toLowerCase().includes(ara)?'block':'none';
   });
 }
 
-/* Başlat */
+function trendleriCiz(){
+  if(!trendChart){
+    var labels=Object.keys(tarihSerisi),data=Object.values(tarihSerisi);
+    if(labels.length){
+      trendChart=new Chart(document.getElementById('trendCanvas').getContext('2d'),{
+        type:'line',
+        data:{labels:labels,datasets:[{label:'Günlük Yanıt',data:data,borderColor:RENKLER[0],backgroundColor:RENKLER[0]+'22',tension:.35,fill:true,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:RENKLER[0]}]},
+        options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{title:function(t){return t[0].label;},label:function(t){return t.raw+' yanıt';}}}},
+          scales:{x:{grid:{display:false},ticks:{maxTicksLimit:12,font:{size:11}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}}}}}
+      });
+    }
+  }
+  if(!haftaChart){
+    var hl=Object.keys(haftalikIstat),hd=Object.values(haftalikIstat);
+    if(hl.length){
+      haftaChart=new Chart(document.getElementById('haftaCanvas').getContext('2d'),{
+        type:'bar',
+        data:{labels:hl,datasets:[{label:'Haftalık',data:hd,backgroundColor:RENKLER[1]+'99',borderColor:RENKLER[1],borderWidth:1.5,borderRadius:5}]},
+        options:{responsive:true,plugins:{legend:{display:false}},
+          scales:{x:{grid:{display:false},ticks:{font:{size:11}}},y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}}}}}
+      });
+    }
+  }
+}
+
 ozetHesapla();
+insightlariOlustur();
+soruNavOlustur();
 grafikleriCiz();
 </script>
 {% endblock %}

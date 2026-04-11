@@ -96,7 +96,7 @@
             {% if opt.ac %}
             <div id="a_{{ soru.id }}_{{ loop.index0 }}" class="metin-ac-div" style="display:none;margin-top:4px;padding-left:8px">
               <input type="text" name="s_{{ soru.id }}_metin_{{ loop.index0 }}"
-                     placeholder="Lütfen belirtin..."
+                     placeholder="{{ opt.ac_metin if opt.ac_metin else 'Lütfen belirtin...' }}"
                      {% if opt.zor %}data-zorunlu-metin="1"{% endif %}
                      style="width:100%">
             </div>
@@ -114,7 +114,7 @@
             {% if opt.ac %}
             <div id="ac_{{ soru.id }}_{{ loop.index0 }}" class="metin-ac-div" style="display:none;margin-top:4px;padding-left:8px">
               <input type="text" name="s_{{ soru.id }}_metin_{{ loop.index0 }}"
-                     placeholder="Lütfen belirtin..."
+                     placeholder="{{ opt.ac_metin if opt.ac_metin else 'Lütfen belirtin...' }}"
                      {% if opt.zor %}data-zorunlu-metin="1"{% endif %}
                      style="width:100%">
             </div>
@@ -192,7 +192,7 @@
           {% if opt.ac %}
           <div id="t_{{ soru.id }}_{{ loop.index0 }}" class="metin-ac-div" style="display:none;margin-top:4px;padding-left:8px">
             <input type="text" name="s_{{ soru.id }}_metin_{{ loop.index0 }}"
-                   placeholder="Lütfen belirtin..."
+                   placeholder="{{ opt.ac_metin if opt.ac_metin else 'Lütfen belirtin...' }}"
                    {% if opt.zor %}data-zorunlu-metin="1"{% endif %}
                    style="width:100%">
           </div>
@@ -210,7 +210,7 @@
           {% if opt.ac %}
           <div id="tc_{{ soru.id }}_{{ loop.index0 }}" class="metin-ac-div" style="display:none;margin-top:4px;padding-left:8px">
             <input type="text" name="s_{{ soru.id }}_metin_{{ loop.index0 }}"
-                   placeholder="Lütfen belirtin..."
+                   placeholder="{{ opt.ac_metin if opt.ac_metin else 'Lütfen belirtin...' }}"
                    {% if opt.zor %}data-zorunlu-metin="1"{% endif %}
                    style="width:100%">
           </div>
