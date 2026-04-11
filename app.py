@@ -421,6 +421,8 @@ def admin_sonuclar(anket_id):
     if not a: return redirect(url_for("admin_panel"))
     filtre_tarih=request.args.get("tarih","")
     filtre_arama=request.args.get("arama","").lower()
+    filtre_soru=request.args.get("soru","")
+    filtre_deger=request.args.get("deger","").lower()
     with db() as c:
         q="SELECT * FROM yanitlar WHERE anket_id=?"
         params=[anket_id]
@@ -429,75 +431,114 @@ def admin_sonuclar(anket_id):
         q+=" ORDER BY id DESC"
         yanitlar=c.execute(q,params).fetchall()
         tarihler=c.execute("SELECT DISTINCT tarih FROM yanitlar WHERE anket_id=? ORDER BY tarih ASC",(anket_id,)).fetchall()
-        # Tüm tarihler için toplam yanıt sayısı (trend grafiği)
         tarih_sayilari=c.execute("SELECT tarih,COUNT(*) as sayi FROM yanitlar WHERE anket_id=? GROUP BY tarih ORDER BY tarih ASC",(anket_id,)).fetchall()
         toplam_db=c.execute("SELECT COUNT(*) as n FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchone()["n"]
+        tum_raw=c.execute("SELECT id,tarih,saat,veriler FROM yanitlar WHERE anket_id=? ORDER BY id ASC",(anket_id,)).fetchall()
     liste=[]
     for y in yanitlar:
         v=json.loads(y["veriler"])
         if filtre_arama:
             if not any(filtre_arama in str(val).lower() for val in v.values()):
                 continue
+        if filtre_soru and filtre_deger:
+            sv=v.get(filtre_soru,"").lower()
+            if filtre_deger not in sv:
+                continue
         liste.append({"id":y["id"],"tarih":y["tarih"],"saat":y["saat"],"veriler":v})
-    # Tüm yanıtlar üzerinden istatistikler
-    with db() as c:
-        tum=c.execute("SELECT veriler FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchall()
+    # Tüm yanıtlar
+    tum=[{"id":r["id"],"tarih":r["tarih"],"saat":r["saat"],"veriler":json.loads(r["veriler"])} for r in tum_raw]
     soru_istat={}
-    yildiz_toplamlar={}  # soru_id -> (toplam_puan, sayi)
+    yildiz_toplamlar={}
     for y in tum:
-        for k,val in json.loads(y["veriler"]).items():
+        for k,val in y["veriler"].items():
             if not k.startswith("s_"): continue
             soru_istat.setdefault(k,{})
             for v2 in val.split(","):
                 v2=v2.strip()
                 if v2:
                     soru_istat[k][v2]=soru_istat[k].get(v2,0)+1
-                    # Yıldız soruları için ortalama hesapla
                     try:
                         puan=int(v2)
                         if 1<=puan<=5:
                             if k not in yildiz_toplamlar: yildiz_toplamlar[k]=[0,0]
                             yildiz_toplamlar[k][0]+=puan; yildiz_toplamlar[k][1]+=1
                     except: pass
-    # Yıldız ortalamaları
     yildiz_ort={k:round(v[0]/v[1],1) for k,v in yildiz_toplamlar.items() if v[1]>0}
-    # Saat dağılımı (0-23)
-    with db() as c:
-        saatler_raw=c.execute("SELECT saat FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchall()
+    # Saat dağılımı
     saat_dagilim={str(i):0 for i in range(24)}
-    for row in saatler_raw:
+    for y in tum:
         try:
-            saat=int(row["saat"].split(":")[0])
+            saat=int(y["saat"].split(":")[0])
             saat_dagilim[str(saat)]=saat_dagilim.get(str(saat),0)+1
         except: pass
-    # Yanıt tamamlanma (kaç yanıt tüm zorunlu soruları doldurmuş)
+    # Haftanın günü dağılımı
+    gun_isimleri=["Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi","Pazar"]
+    gun_dagilim={g:0 for g in gun_isimleri}
+    for y in tum:
+        try:
+            from datetime import datetime as dt2
+            d=dt2.strptime(y["tarih"],"%Y-%m-%d")
+            gun_dagilim[gun_isimleri[d.weekday()]]+=1
+        except: pass
+    # Haftalık trend (son 8 hafta)
+    haftalik={}
+    for y in tum:
+        try:
+            from datetime import datetime as dt2
+            d=dt2.strptime(y["tarih"],"%Y-%m-%d")
+            # ISO hafta numarası
+            yw=d.strftime("%Y-H%V")
+            haftalik[yw]=haftalik.get(yw,0)+1
+        except: pass
+    haftalik_liste=[{"h":k,"n":v} for k,v in sorted(haftalik.items())[-10:]]
+    # Tüm sorular
     tum_sorular=[]
     for b in a["bolumler"]:
         for s in b["sorular"]: tum_sorular.append(s)
     zorunlu_ids=["s_"+str(s["id"]) for s in tum_sorular if s.get("zorunlu")]
     tam_doldu=0
     for y in tum:
-        veri=json.loads(y["veriler"])
-        if all(veri.get(k,"").strip() for k in zorunlu_ids): tam_doldu+=1
+        if all(y["veriler"].get(k,"").strip() for k in zorunlu_ids): tam_doldu+=1
     tamamlanma_ort=round(tam_doldu/toplam_db*100) if toplam_db>0 else 0
     # Soru yanıt oranları
     soru_yanit_oran={}
     for s in tum_sorular:
         k="s_"+str(s["id"])
-        dolu=sum(1 for y in tum if json.loads(y["veriler"]).get(k,"").strip())
+        dolu=sum(1 for y in tum if y["veriler"].get(k,"").strip())
         soru_yanit_oran[k]=round(dolu/toplam_db*100) if toplam_db>0 else 0
+    # Yıldız dağılım detay (her puan kaç kişi)
+    yildiz_dagilim={}
+    for k,vals in soru_istat.items():
+        soru_obj=next((s for s in tum_sorular if "s_"+str(s["id"])==k),None)
+        if soru_obj and soru_obj.get("tip")=="yildiz":
+            yildiz_dagilim[k]={str(i):vals.get(str(i),0) for i in range(1,6)}
+    # İlk / son yanıt tarihi
+    ilk_tarih=tum[0]["tarih"] if tum else "—"
+    son_tarih=tum[-1]["tarih"] if tum else "—"
+    # En yoğun gün
+    en_yogun=""
+    if tarih_sayilari:
+        en_yogun=max(tarih_sayilari, key=lambda r: r["sayi"])["tarih"]
+    # En yoğun saat
+    en_yogun_saat=max(saat_dagilim, key=lambda k: saat_dagilim[k]) if any(saat_dagilim.values()) else "—"
     ctx=gctx()
     ctx.update({"anket":a,"yanitlar":liste,
                 "soru_istat":json.dumps(soru_istat,ensure_ascii=False),
                 "yildiz_ort":json.dumps(yildiz_ort,ensure_ascii=False),
+                "yildiz_dagilim":json.dumps(yildiz_dagilim,ensure_ascii=False),
                 "tarihler":[r["tarih"] for r in tarihler],
                 "tarih_sayilari":json.dumps([{"t":r["tarih"],"n":r["sayi"]} for r in tarih_sayilari],ensure_ascii=False),
                 "saat_dagilim":json.dumps(saat_dagilim,ensure_ascii=False),
+                "gun_dagilim":json.dumps(gun_dagilim,ensure_ascii=False),
+                "haftalik_liste":json.dumps(haftalik_liste,ensure_ascii=False),
                 "tamamlanma_ort":tamamlanma_ort,"tam_doldu":tam_doldu,
                 "soru_yanit_oran":json.dumps(soru_yanit_oran,ensure_ascii=False),
                 "filtre_tarih":filtre_tarih,"filtre_arama":filtre_arama,
+                "filtre_soru":filtre_soru,"filtre_deger":filtre_deger,
                 "toplam_yanit":len(liste),"toplam_db":toplam_db,
-                "tum_sorular":tum_sorular})
+                "tum_sorular":tum_sorular,
+                "ilk_tarih":ilk_tarih,"son_tarih":son_tarih,
+                "en_yogun":en_yogun,"en_yogun_saat":en_yogun_saat})
     return render_template("admin_sonuclar.html",**ctx)
 
 @app.route("/admin/yanit_sil/<int:yid>",methods=["POST"])
