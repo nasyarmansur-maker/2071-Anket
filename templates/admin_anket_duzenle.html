@@ -373,25 +373,55 @@ function secenekEkle(listeId, deger, ac, zor, idx, acMetin) {
   ac      = !!ac;
   zor     = !!zor;
   acMetin = acMetin || '';
+
+  // Satır kapsayıcı
   var div = document.createElement('div');
   div.className = 'secenek-satir';
   div.style.cssText = 'flex-direction:column;gap:4px;background:var(--gri-ac);padding:6px 8px;border-radius:var(--r);margin-bottom:6px';
-  div.innerHTML =
-    '<div style="display:flex;gap:6px">'
-      + '<input type="text" name="secenek" value="' + String(deger).replace(/"/g,'&quot;') + '" placeholder="Seçenek metni..." style="flex:1">'
-      + '<button type="button" onclick="this.closest('.secenek-satir').remove()" class="btn btn-tehlike btn-kucuk">✕</button>'
-    + '</div>'
-    + '<div style="display:flex;gap:14px;font-size:12px;flex-wrap:wrap;align-items:center">'
-      + '<label style="display:flex;align-items:center;gap:4px;cursor:pointer">'
-        + '<input type="checkbox" name="secenek_ac" value="' + i + '"' + (ac ? ' checked' : '') + ' onchange="secAcToggle(this)" style="width:14px;height:14px;accent-color:var(--ana)">'
-        + ' Metin alanı aç</label>'
-      + '<label style="display:flex;align-items:center;gap:4px;cursor:pointer">'
-        + '<input type="checkbox" name="secenek_zor" value="' + i + '"' + (zor ? ' checked' : '') + ' style="width:14px;height:14px;accent-color:var(--kirmizi)">'
-        + ' Metin zorunlu</label>'
-    + '</div>'
-    + '<div class="sec-ac-metin-wrap" style="display:' + (ac ? 'block' : 'none') + ';margin-top:2px">'
-      + '<input type="text" name="secenek_ac_metin" value="' + String(acMetin).replace(/"/g,'&quot;') + '" placeholder="Metin kutusu etiketi (ör: Lütfen açıklayınız...)" style="width:100%;font-size:12px">'
-    + '</div>';
+
+  // Üst satır: metin input + sil butonu
+  var row1 = document.createElement('div');
+  row1.style.cssText = 'display:flex;gap:6px';
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.name = 'secenek'; inp.value = deger;
+  inp.placeholder = 'Seçenek metni...'; inp.style.flex = '1';
+  var silBtn = document.createElement('button');
+  silBtn.type = 'button'; silBtn.className = 'btn btn-tehlike btn-kucuk'; silBtn.textContent = '✕';
+  silBtn.onclick = function(){ this.closest('.secenek-satir').remove(); };
+  row1.appendChild(inp); row1.appendChild(silBtn);
+
+  // İkinci satır: checkboxlar
+  var row2 = document.createElement('div');
+  row2.style.cssText = 'display:flex;gap:14px;font-size:12px;flex-wrap:wrap;align-items:center';
+
+  var lblAc = document.createElement('label');
+  lblAc.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer';
+  var cbAc = document.createElement('input');
+  cbAc.type = 'checkbox'; cbAc.name = 'secenek_ac'; cbAc.value = i;
+  cbAc.checked = ac; cbAc.style.cssText = 'width:14px;height:14px;accent-color:var(--ana)';
+  cbAc.onchange = function(){ secAcToggle(this); };
+  lblAc.appendChild(cbAc); lblAc.appendChild(document.createTextNode(' Metin alanı aç'));
+
+  var lblZor = document.createElement('label');
+  lblZor.style.cssText = 'display:flex;align-items:center;gap:4px;cursor:pointer';
+  var cbZor = document.createElement('input');
+  cbZor.type = 'checkbox'; cbZor.name = 'secenek_zor'; cbZor.value = i;
+  cbZor.checked = zor; cbZor.style.cssText = 'width:14px;height:14px;accent-color:var(--kirmizi)';
+  lblZor.appendChild(cbZor); lblZor.appendChild(document.createTextNode(' Metin zorunlu'));
+
+  row2.appendChild(lblAc); row2.appendChild(lblZor);
+
+  // Üçüncü satır: ac_metin input (gizli)
+  var row3 = document.createElement('div');
+  row3.className = 'sec-ac-metin-wrap';
+  row3.style.cssText = 'display:' + (ac ? 'block' : 'none') + ';margin-top:2px';
+  var inpAcMetin = document.createElement('input');
+  inpAcMetin.type = 'text'; inpAcMetin.name = 'secenek_ac_metin'; inpAcMetin.value = acMetin;
+  inpAcMetin.placeholder = 'Metin kutusu etiketi (ör: Lütfen açıklayınız...)';
+  inpAcMetin.style.cssText = 'width:100%;font-size:12px;box-sizing:border-box';
+  row3.appendChild(inpAcMetin);
+
+  div.appendChild(row1); div.appendChild(row2); div.appendChild(row3);
   if(liste) liste.appendChild(div);
 }
 
