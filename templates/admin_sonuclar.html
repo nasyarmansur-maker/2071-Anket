@@ -101,6 +101,21 @@
 .yk-id{font-size:11px;color:var(--metin-uc)}
 .bos-durum{text-align:center;padding:4rem 1rem;color:var(--metin-uc)}
 .bos-ikon{font-size:52px;opacity:.3;margin-bottom:12px}
+/* ── YANIT ANALİZ (sekme 3 iç sekmeler) ── */
+.ic-sekme-bar{display:flex;gap:0;border-bottom:1.5px solid var(--kenar);margin-bottom:1rem}
+.ic-sekme-btn{padding:8px 14px;font-size:12px;font-weight:600;color:var(--metin-ik);background:none;border:none;cursor:pointer;position:relative;white-space:nowrap;transition:color .15s}
+.ic-sekme-btn::after{content:'';position:absolute;bottom:-1.5px;left:0;right:0;height:2px;background:var(--ana);transform:scaleX(0);transition:transform .2s}
+.ic-sekme-btn.aktif{color:var(--ana)}.ic-sekme-btn.aktif::after{transform:scaleX(1)}
+.ic-sekme-panel{display:none}.ic-sekme-panel.aktif{display:block}
+.soru-ozet-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:12px;padding:.9rem 1rem;margin-bottom:.75rem}
+.soru-ozet-baslik{font-size:13px;font-weight:700;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.soru-ozet-meta{display:flex;gap:6px;align-items:center;margin-bottom:.6rem;flex-wrap:wrap}
+.mini-progress-satir{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:12px}
+.mini-progress-lbl{min-width:90px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--metin-ik)}
+.mini-progress-bar{flex:1;height:10px;background:var(--gri-ac);border-radius:6px;overflow:hidden}
+.mini-progress-ic{height:100%;border-radius:6px;transition:width .6s}
+.mini-progress-n{font-size:11px;color:var(--metin-uc);min-width:50px;text-align:right}
+
 /* Filtre */
 .filtre-panel{background:var(--yuzey);border:1px solid var(--kenar);border-radius:12px;padding:.875rem 1rem;margin-bottom:1.25rem}
 .filtre-ic{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
@@ -398,6 +413,51 @@
 
 <!-- ══ SEKME 3: YANIT LİSTESİ ══ -->
 <div class="sekme-panel" id="sp3">
+
+  <!-- İç sekmeler -->
+  <div class="ic-sekme-bar">
+    <button class="ic-sekme-btn aktif" onclick="icSekmeDegis(0,this)">📊 Tüm Sorular Özeti</button>
+    <button class="ic-sekme-btn" onclick="icSekmeDegis(1,this)">🔍 Soru Bazlı Analiz</button>
+    <button class="ic-sekme-btn" onclick="icSekmeDegis(2,this)">📋 Bireysel Yanıtlar</button>
+  </div>
+
+  <!-- İÇ SEKME 0: Tüm sorular özeti -->
+  <div class="ic-sekme-panel aktif" id="isp0">
+    <div id="tumSorularOzet"></div>
+  </div>
+
+  <!-- İÇ SEKME 1: Soru bazlı detay -->
+  <div class="ic-sekme-panel" id="isp1">
+    <div class="bolum-nav" id="soruBazliNav" style="margin-bottom:1rem">
+      {% for soru in tum_sorular %}
+      <button class="bolum-nav-btn {% if loop.first %}aktif{% endif %}" onclick="soruBazliGoster('sq_detay_{{ soru.id }}',this)">
+        {{ loop.index }}. {{ soru.metin[:30] }}{% if soru.metin|length > 30 %}…{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    {% for soru in tum_sorular %}
+    <div id="sq_detay_{{ soru.id }}" style="display:{% if loop.first %}block{% else %}none{% endif %}">
+      <div class="soru-ozet-kart" style="background:var(--ana-ac);border-color:var(--ana-orta)">
+        <div style="font-size:15px;font-weight:800;margin-bottom:.25rem">{{ soru.metin }}</div>
+        <div class="soru-ozet-meta">
+          {% if soru.tip == 'yildiz' %}<span class="g-tip gt-yildiz">⭐ Yıldız</span>
+          {% elif soru.tip == 'secim' %}<span class="g-tip gt-secim">🔘 Seçim</span>
+          {% elif soru.tip == 'coklu' %}<span class="g-tip gt-coklu">☑️ Çoklu</span>
+          {% elif soru.tip == 'metin' %}<span class="g-tip gt-metin">📝 Açık Uçlu</span>
+          {% elif soru.tip == 'evet_hayir' %}<span class="g-tip gt-eh">👍 E/H</span>
+          {% elif soru.tip == 'sayi' %}<span class="g-tip gt-metin">🔢 Sayısal</span>
+          {% endif %}
+          {% if soru.zorunlu %}<span style="font-size:10px;color:var(--kirmizi);font-weight:700">● Zorunlu</span>{% endif %}
+          <span style="font-size:11px;color:var(--metin-ik)" id="sbd_meta_{{ soru.id }}"></span>
+        </div>
+        <div id="sbd_icerik_{{ soru.id }}"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- İÇ SEKME 2: Bireysel yanıtlar -->
+  <div class="ic-sekme-panel" id="isp2">
   <div class="filtre-panel">
     <form class="filtre-ic" method="GET">
       <div><label>Tarih</label>
@@ -489,6 +549,7 @@
     {% endif %}
   </div>
   {% endif %}
+  </div><!-- /isp2 -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -796,11 +857,235 @@ function toggle(id){document.getElementById('yk_'+id).classList.toggle('acik');}
 function tumunuAc(){document.querySelectorAll('.yk').forEach(function(k){k.classList.add('acik');});}
 function tumunuKapat(){document.querySelectorAll('.yk').forEach(function(k){k.classList.remove('acik');});}
 
+/* ── İç sekme (sp3) ── */
+function icSekmeDegis(idx, btn){
+  document.querySelectorAll('.ic-sekme-panel').forEach(function(p,i){ p.classList.toggle('aktif',i===idx); });
+  document.querySelectorAll('.ic-sekme-btn').forEach(function(b){ b.classList.remove('aktif'); });
+  if(btn) btn.classList.add('aktif');
+  if(idx===0 && !window._tumOzetYuklendi){ _tumSorularOzetCiz(); window._tumOzetYuklendi=true; }
+  if(idx===1 && !window._soruBazliYuklendi){ _soruBazliCiz(); window._soruBazliYuklendi=true; }
+}
+
+/* ── Soru bazlı nav ── */
+function soruBazliGoster(id, btn){
+  document.querySelectorAll('#soruBazliNav ~ div').forEach(function(d){ d.style.display='none'; });
+  document.querySelectorAll('#soruBazliNav .bolum-nav-btn').forEach(function(b){ b.classList.remove('aktif'); });
+  var el=document.getElementById(id);
+  if(el) el.style.display='block';
+  if(btn) btn.classList.add('aktif');
+}
+
+/* ── Tüm sorular özet (isp0) ── */
+function _tumSorularOzetCiz(){
+  var kap=document.getElementById('tumSorularOzet');
+  if(!kap) return;
+  kap.innerHTML='';
+  AB.forEach(function(bolum){
+    var bDiv=document.createElement('div');
+    bDiv.innerHTML='<div class="sec-baslik">'+escH(bolum.baslik)+'</div>';
+    kap.appendChild(bDiv);
+    bolum.sorular.forEach(function(soru, si){
+      var key='s_'+soru.id;
+      var veri=SI[key]||{};
+      var tot=Object.values(veri).reduce(function(a,b){return a+b;},0);
+      var oran=(YOR[key]||0);
+      var div=document.createElement('div');
+      div.className='soru-ozet-kart';
+
+      var tipLabel={'yildiz':'⭐ Yıldız','secim':'🔘 Seçim','coklu':'☑️ Çoklu',
+        'metin':'📝 Metin','evet_hayir':'👍 E/H','sayi':'🔢 Sayısal'};
+      var tipClass={'yildiz':'gt-yildiz','secim':'gt-secim','coklu':'gt-coklu',
+        'metin':'gt-metin','evet_hayir':'gt-eh','sayi':'gt-metin'};
+
+      var html='<div class="soru-ozet-baslik">';
+      html+='<span>'+(si+1)+'. '+escH(soru.metin)+'</span>';
+      html+='<span class="g-tip '+(tipClass[soru.tip]||'gt-metin')+'" style="font-size:9px;flex-shrink:0">'+(tipLabel[soru.tip]||soru.tip)+'</span>';
+      html+='</div>';
+      html+='<div class="soru-ozet-meta">';
+      html+='<div class="sq-yanit-oran"><div class="sq-yanit-bar"><div class="sq-yanit-bar-ic" style="width:'+oran+'%"></div></div> <span>%'+oran+' katılım · '+tot+' yanıt</span></div>';
+      html+='</div>';
+
+      if(soru.tip==='yildiz'){
+        var ort=YO[key];
+        if(ort!==undefined){
+          var stars='';
+          var d=Math.round(ort);
+          for(var i=0;i<d;i++) stars+='<span style="color:#EF9F27">★</span>';
+          for(var i=0;i<5-d;i++) stars+='<span style="color:#ddd">☆</span>';
+          html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">';
+          html+='<span style="font-size:24px;font-weight:800;color:var(--ana)">'+ort+'</span>';
+          html+='<span style="font-size:16px">'+stars+'</span>';
+          html+='</div>';
+          ['5','4','3','2','1'].forEach(function(star){
+            var cnt=veri[star]||0;
+            var pct=tot>0?Math.round(cnt/tot*100):0;
+            html+='<div class="mini-progress-satir"><span class="mini-progress-lbl">'+star+'★</span>';
+            html+='<div class="mini-progress-bar"><div class="mini-progress-ic" style="width:'+pct+'%;background:#EF9F27"></div></div>';
+            html+='<span class="mini-progress-n">'+cnt+' (%'+pct+')</span></div>';
+          });
+        }
+      } else if(soru.tip==='evet_hayir'){
+        var evet=veri['Evet']||0,hayir=veri['Hayır']||0,etop=evet+hayir;
+        var ep=etop>0?Math.round(evet/etop*100):0;
+        html+='<div style="display:flex;gap:8px">';
+        html+='<div style="flex:1;border-radius:8px;padding:8px;text-align:center;background:var(--yesil-ac);border:1px solid #b5d89a">';
+        html+='<div style="font-size:10px;font-weight:700;color:var(--yesil)">EVET</div>';
+        html+='<div style="font-size:20px;font-weight:800;color:var(--yesil)">'+evet+'</div>';
+        html+='<div style="font-size:11px;color:var(--metin-ik)">%'+ep+'</div></div>';
+        html+='<div style="flex:1;border-radius:8px;padding:8px;text-align:center;background:var(--kirmizi-ac);border:1px solid #f5b8b8">';
+        html+='<div style="font-size:10px;font-weight:700;color:var(--kirmizi)">HAYIR</div>';
+        html+='<div style="font-size:20px;font-weight:800;color:var(--kirmizi)">'+hayir+'</div>';
+        html+='<div style="font-size:11px;color:var(--metin-ik)">%'+(100-ep)+'</div></div></div>';
+      } else if(soru.tip==='secim'||soru.tip==='coklu'){
+        var labs=(soru.sec_listesi&&soru.sec_listesi.length)?soru.sec_listesi:Object.keys(veri);
+        var sir=labs.map(function(l){return{l:l,n:veri[l]||0};}).sort(function(a,b){return b.n-a.n;});
+        sir.slice(0,8).forEach(function(item,ii){
+          var pct=tot>0?Math.round(item.n/tot*100):0;
+          html+='<div class="mini-progress-satir">';
+          html+='<div class="mini-progress-lbl" title="'+escH(item.l)+'">'+escH(item.l)+'</div>';
+          html+='<div class="mini-progress-bar"><div class="mini-progress-ic" style="width:'+pct+'%;background:'+CLR[ii%CLR.length]+'"></div></div>';
+          html+='<span class="mini-progress-n">'+item.n+' (%'+pct+')</span></div>';
+        });
+      } else if(soru.tip==='metin'||soru.tip==='sayi'){
+        var met=Object.keys(veri).filter(function(l){return l.trim();});
+        if(met.length){
+          html+='<div style="max-height:150px;overflow-y:auto">';
+          met.slice(0,6).forEach(function(m){ html+='<div class="mt-yorum">'+escH(m)+'</div>'; });
+          if(met.length>6) html+='<div class="mt-bos">+'+(met.length-6)+' yanıt daha</div>';
+          html+='</div>';
+        } else { html+='<div class="mt-bos">Henüz yanıt yok</div>'; }
+      }
+      div.innerHTML=html;
+      kap.appendChild(div);
+    });
+  });
+}
+
+/* ── Soru bazlı detay (isp1) ── */
+function _soruBazliCiz(){
+  AB.forEach(function(bolum){
+    bolum.sorular.forEach(function(soru){
+      var key='s_'+soru.id;
+      var veri=SI[key]||{};
+      var tot=Object.values(veri).reduce(function(a,b){return a+b;},0);
+      var oran=(YOR[key]||0);
+      var metaEl=document.getElementById('sbd_meta_'+soru.id);
+      var icerikEl=document.getElementById('sbd_icerik_'+soru.id);
+      if(metaEl) metaEl.textContent=tot+' yanıt · %'+oran+' katılım';
+      if(!icerikEl) return;
+
+      var html='';
+      if(soru.tip==='yildiz'){
+        var ort=YO[key];
+        if(ort!==undefined){
+          html+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:.75rem">';
+          html+='<div style="font-size:36px;font-weight:800;color:var(--ana);line-height:1">'+ort+'</div>';
+          var stars='';var d=Math.round(ort);
+          for(var i=0;i<d;i++) stars+='<span style="color:#EF9F27;font-size:20px">★</span>';
+          for(var i=0;i<5-d;i++) stars+='<span style="color:#ddd;font-size:20px">☆</span>';
+          html+='<div>'+stars+'<div style="font-size:11px;color:var(--metin-ik);margin-top:3px">'+tot+' yanıt</div></div></div>';
+          ['5','4','3','2','1'].forEach(function(star){
+            var cnt=veri[star]||0;
+            var pct=tot>0?Math.round(cnt/tot*100):0;
+            html+='<div class="mini-progress-satir">';
+            html+='<div class="mini-progress-lbl">'+star+' ★ </div>';
+            html+='<div class="mini-progress-bar"><div class="mini-progress-ic" style="width:'+pct+'%;background:#EF9F27"></div></div>';
+            html+='<span class="mini-progress-n">'+cnt+' (%'+pct+')</span></div>';
+          });
+          // Inline bar chart via canvas
+          var cid='sbd_c_'+soru.id;
+          html+='<div style="height:110px;margin-top:.75rem"><canvas id="'+cid+'"></canvas></div>';
+          icerikEl.innerHTML=html;
+          setTimeout(function(cid2,v,t){ return function(){
+            var cv=document.getElementById(cid2);
+            if(!cv||!t) return;
+            new Chart(cv.getContext('2d'),{type:'bar',data:{
+              labels:['1★','2★','3★','4★','5★'],
+              datasets:[{data:[v['1']||0,v['2']||0,v['3']||0,v['4']||0,v['5']||0],
+                backgroundColor:['#fde7d1','#fdd4a8','#fdc06a','#f5a623','#EF9F27'],borderRadius:5,borderWidth:0}]
+            },options:{responsive:true,maintainAspectRatio:false,
+              plugins:{legend:{display:false}},
+              scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:9}}},
+                      x:{grid:{display:false},ticks:{font:{size:11}}}}}});
+          };}(cid, veri, tot), 100);
+          return;
+        }
+      } else if(soru.tip==='evet_hayir'){
+        var evet=veri['Evet']||0,hayir=veri['Hayır']||0,etop=evet+hayir;
+        var ep=etop>0?Math.round(evet/etop*100):0;
+        html+='<div style="display:flex;gap:10px;margin-bottom:.75rem">';
+        html+='<div style="flex:1;border-radius:10px;padding:12px;text-align:center;background:var(--yesil-ac);border:1px solid #b5d89a">';
+        html+='<div style="font-size:11px;font-weight:700;color:var(--yesil);text-transform:uppercase">Evet</div>';
+        html+='<div style="font-size:28px;font-weight:800;color:var(--yesil)">'+evet+'</div>';
+        html+='<div style="font-size:12px;color:var(--metin-ik)">%'+ep+'</div></div>';
+        html+='<div style="flex:1;border-radius:10px;padding:12px;text-align:center;background:var(--kirmizi-ac);border:1px solid #f5b8b8">';
+        html+='<div style="font-size:11px;font-weight:700;color:var(--kirmizi);text-transform:uppercase">Hayır</div>';
+        html+='<div style="font-size:28px;font-weight:800;color:var(--kirmizi)">'+hayir+'</div>';
+        html+='<div style="font-size:12px;color:var(--metin-ik)">%'+(100-ep)+'</div></div></div>';
+        html+='<div style="height:8px;background:var(--gri-ac);border-radius:20px;overflow:hidden">';
+        html+='<div style="height:100%;background:var(--yesil);border-radius:20px;width:'+ep+'%"></div></div>';
+      } else if(soru.tip==='secim'||soru.tip==='coklu'){
+        var labs=(soru.sec_listesi&&soru.sec_listesi.length)?soru.sec_listesi:Object.keys(veri);
+        var sir=labs.map(function(l){return{l:l,n:veri[l]||0};}).sort(function(a,b){return b.n-a.n;});
+        sir.forEach(function(item,ii){
+          var pct=tot>0?Math.round(item.n/tot*100):0;
+          html+='<div class="mini-progress-satir">';
+          html+='<div class="mini-progress-lbl" title="'+escH(item.l)+'">'+escH(item.l)+'</div>';
+          html+='<div class="mini-progress-bar"><div class="mini-progress-ic" style="width:'+pct+'%;background:'+CLR[ii%CLR.length]+'"></div></div>';
+          html+='<span class="mini-progress-n">'+item.n+' (%'+pct+')</span></div>';
+        });
+        if(labs.length<=8){
+          var cid2='sbd_pie_'+soru.id;
+          html+='<div style="height:160px;margin-top:.75rem"><canvas id="'+cid2+'"></canvas></div>';
+          icerikEl.innerHTML=html;
+          setTimeout(function(cid3,s2,v2,t2){ return function(){
+            var cv=document.getElementById(cid3);
+            if(!cv||!t2) return;
+            new Chart(cv.getContext('2d'),{type:'doughnut',data:{
+              labels:s2.map(function(x){return x.l.length>22?x.l.slice(0,22)+'…':x.l;}),
+              datasets:[{data:s2.map(function(x){return x.n;}),
+                backgroundColor:CLR.slice(0,s2.length).map(function(c){return c+'cc';}),
+                borderColor:CLR.slice(0,s2.length),borderWidth:1.5}]
+            },options:{responsive:true,maintainAspectRatio:false,cutout:'50%',
+              plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10,padding:5}}}}});
+          };}(cid2, sir, veri, tot), 100);
+          return;
+        }
+      } else if(soru.tip==='metin'||soru.tip==='sayi'){
+        var met=Object.keys(veri).filter(function(l){return l.trim();});
+        html+='<div style="font-size:12px;color:var(--metin-ik);margin-bottom:.5rem">'+met.length+' yanıt</div>';
+        if(met.length){
+          html+='<div style="max-height:300px;overflow-y:auto">';
+          met.forEach(function(m){ html+='<div class="mt-yorum">'+escH(m)+'</div>'; });
+          html+='</div>';
+        } else { html+='<div class="mt-bos">Henüz yanıt yok</div>'; }
+      }
+      icerikEl.innerHTML=html;
+    });
+  });
+}
+
 {% if filtre_tarih or filtre_arama %}
 window.addEventListener('DOMContentLoaded',function(){
   var btn=document.querySelectorAll('.sekme-btn')[3];
   if(btn) sekmeDegis(3,btn);
+  // Bireysel yanıtlar iç sekmesine git
+  setTimeout(function(){
+    var ibtn=document.querySelectorAll('.ic-sekme-btn')[2];
+    if(ibtn) icSekmeDegis(2,ibtn);
+  },100);
 });
 {% endif %}
+
+// Sekme 3'e ilk açılışta tüm özeti yükle
+var _sp3Observer = new MutationObserver(function(muts){
+  muts.forEach(function(m){
+    if(m.target.id==='sp3' && m.target.classList.contains('aktif') && !window._tumOzetYuklendi){
+      _tumSorularOzetCiz(); window._tumOzetYuklendi=true;
+    }
+  });
+});
+var sp3el=document.getElementById('sp3');
+if(sp3el) _sp3Observer.observe(sp3el,{attributes:true,attributeFilter:['class']});
 </script>
 {% endblock %}
