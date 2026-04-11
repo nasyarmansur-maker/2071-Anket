@@ -8,8 +8,7 @@
 .modal{background:var(--yuzey);border-radius:var(--r-xl);padding:1.5rem;width:100%;max-width:540px;margin:2rem auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .modal-baslik{font-size:17px;font-weight:700;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
 .modal-kapat{background:none;border:none;font-size:24px;cursor:pointer;color:var(--gri);line-height:1;padding:0 4px}
-.secenek-satir{display:flex;gap:6px;margin-bottom:6px}
-.secenek-satir input{flex:1}
+.secenek-satir{margin-bottom:6px}
 .bolum-blok{background:var(--yuzey);border:1.5px solid var(--kenar);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem}
 .bolum-blok.pasif{opacity:.5}
 .soru-item{background:var(--gri-ac);border:1px solid var(--kenar);border-radius:var(--r);padding:10px 12px;margin-bottom:6px}
@@ -113,7 +112,7 @@
       <div style="flex:1;min-width:100px">
         <div style="font-size:13px;font-weight:500;line-height:1.4">{{ soru.metin }}</div>
         {% if soru.kosul_soru_id %}<div style="font-size:11px;color:var(--turuncu);margin-top:2px">🔀 Koşullu</div>{% endif %}
-        {% if soru.secenekler %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sv }}</span>{% endfor %}</div>{% endif %}
+        {% if soru.secenekler %}<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">{% for sv in soru.secenekler %}{% set sm = sv.metin if sv is mapping else sv %}<span style="font-size:11px;background:var(--ana-ac);color:var(--ana);padding:1px 7px;border-radius:20px">{{ sm }}{% if sv is mapping and sv.mg %} ✏️{% endif %}</span>{% endfor %}</div>{% endif %}
       </div>
 
       <!-- Aksiyonlar -->
@@ -131,7 +130,7 @@
           data-gorsel="{{ soru.get('gorsel','') }}"
           data-kosul-sid="{{ soru.kosul_soru_id or '' }}"
           data-kosul-deger="{{ soru.kosul_deger or '' }}"
-          data-secenekler="{{ soru.secenekler | join('|||') if soru.secenekler else '' }}"
+          data-secenekler='{{ soru.secenekler | tojson if soru.secenekler else "[]" }}'
         >✏️ Düzenle</button>
         <!-- Sil -->
         <form method="POST" action="/admin/soru/{{ soru.id }}/sil" onsubmit="return confirm('Soruyu silmek istediğinizden emin misiniz?')"><input type="hidden" name="anket_id" value="{{ anket.id }}"><button type="submit" class="btn btn-tehlike btn-kucuk">✕</button></form>
@@ -322,8 +321,9 @@ function soruDuzenleAc(btn){
   var gorsel = btn.dataset.gorsel||'';
   var kosulSid   = btn.dataset.kosulSid||'';
   var kosulDeger = btn.dataset.kosulDeger||'';
-  var secStr = btn.dataset.secenekler||'';
-  var secs   = secStr ? secStr.split('|||') : [];
+  var secStr = btn.dataset.secenekler||'[]';
+  var secs = [];
+  try { secs = JSON.parse(secStr); } catch(e) { secs = []; }
 
   document.getElementById('soruDuzenleForm').action='/admin/soru/'+sid+'/guncelle';
   document.getElementById('sdMetin').value=metin;
@@ -345,7 +345,7 @@ function soruDuzenleAc(btn){
   // Seçenekler
   var liste=document.getElementById('sdSecenekListe');
   liste.innerHTML='';
-  secs.forEach(function(sv){if(sv.trim())secenekEkle('sdSecenekListe',sv);});
+  secs.forEach(function(sv){ secenekEkle('sdSecenekListe', typeof sv==='string'?sv:sv.metin, typeof sv==='object'?sv.mg:0, typeof sv==='object'?sv.mz:0); });
 
   // Koşul
   document.getElementById('sdKosulSid').value=kosulSid;
@@ -362,12 +362,25 @@ function tipDegis(p){
   if(d)d.style.display=goster?'block':'none';
 }
 
-function secenekEkle(listeId,deger){
+function secenekEkle(listeId,deger,mg,mz){
+  mg=mg?1:0; mz=mz?1:0;
   var liste=document.getElementById(listeId);
   var div=document.createElement('div');
   div.className='secenek-satir';
-  div.innerHTML='<input type="text" name="secenek" value="'+(deger||'')+'" placeholder="Seçenek yazın...">'
-    +'<button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>';
+  div.style.cssText='display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:6px';
+  div.innerHTML=
+    '<input type="text" name="secenek" value="'+(deger||'')+'" placeholder="Seçenek yazın..." style="flex:1;min-width:120px">'+
+    '<label style="display:flex;align-items:center;gap:3px;font-size:12px;white-space:nowrap;cursor:pointer" title="Seçildiğinde metin kutusu aç">'+
+      '<input type="hidden" name="secenek_mg" value="'+mg+'">'+
+      '<input type="checkbox" '+(mg?'checked':'')+' onchange="this.previousElementSibling.value=this.checked?1:0;this.closest('.secenek-satir').querySelector('.mz-grup').style.display=this.checked?'flex':'none'"> ✏️ Metin alanı'+
+    '</label>'+
+    '<span class="mz-grup" style="display:'+(mg?'flex':'none')+';align-items:center;gap:3px;font-size:12px;white-space:nowrap">'+
+      '<label style="cursor:pointer">'+
+        '<input type="hidden" name="secenek_mz" value="'+mz+'">'+
+        '<input type="checkbox" '+(mz?'checked':'')+' onchange="this.previousElementSibling.value=this.checked?1:0"> Zorunlu'+
+      '</label>'+
+    '</span>'+
+    '<button type="button" onclick="this.parentElement.remove()" class="btn btn-tehlike btn-kucuk">✕</button>';
   liste.appendChild(div);
 }
 
@@ -379,11 +392,12 @@ function kosulSecenekDoldur(p,secilenDeger){
   var soru=tumSorular.find(function(s){return String(s.id)===String(sid);});
   if(!soru){if(dd)dd.style.display='none';return;}
   ds.innerHTML='';
-  var secs=Array.isArray(soru.secenekler)&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
-  secs.forEach(function(opt){
+  var rawSecs=Array.isArray(soru.secenekler)&&soru.secenekler.length?soru.secenekler:['Evet','Hayır'];
+  rawSecs.forEach(function(opt){
+    var txt=typeof opt==='string'?opt:opt.metin;
     var o=document.createElement('option');
-    o.value=opt;o.textContent=opt;
-    if(opt===secilenDeger)o.selected=true;
+    o.value=txt;o.textContent=txt;
+    if(txt===secilenDeger)o.selected=true;
     ds.appendChild(o);
   });
   dd.style.display='block';

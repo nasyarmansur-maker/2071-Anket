@@ -160,7 +160,14 @@ def get_anket(aid):
             sorular=c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
             bd["sorular"]=[dict(s) for s in sorular]
             for s in bd["sorular"]:
-                s["secenekler"]=json.loads(s["secenekler"] or "[]")
+                raw=json.loads(s["secenekler"] or "[]")
+                normalized=[]
+                for opt in raw:
+                    if isinstance(opt,str):
+                        normalized.append({"metin":opt,"mg":0,"mz":0})
+                    elif isinstance(opt,dict):
+                        normalized.append({"metin":opt.get("metin",opt.get("m","")),"mg":int(opt.get("mg",0)),"mz":int(opt.get("mz",0))})
+                s["secenekler"]=normalized
             result["bolumler"].append(bd)
         return result
 
@@ -241,15 +248,12 @@ def anket(anket_id):
             if key.endswith('_diger'): continue  # ayrı işlenecek
             vals=request.form.getlist(key)
             veriler[key]=",".join(vals) if len(vals)>1 else vals[0]
-        # "Diğer" seçeneği seçildiyse metin değerini birleştir
+        # Metin girişi olan seçenekler seçildiyse metin değerini birleştir
         for key in list(veriler.keys()):
             diger_key = key + '_diger'
             diger_val = request.form.get(diger_key,'').strip()
             if diger_val and key in veriler:
-                mevcut = veriler[key]
-                # "Diğer" veya "diğer" seçilmişse metni ekle
-                if any(d in mevcut.lower() for d in ['diğer','diger','other']):
-                    veriler[key] = mevcut + ': ' + diger_val
+                veriler[key] = veriler[key] + ': ' + diger_val
         with db() as c:
             c.execute("INSERT INTO yanitlar (anket_id,tarih,saat,veriler) VALUES (?,?,?,?)",
                       (anket_id,datetime.now().strftime("%d.%m.%Y"),
@@ -577,12 +581,30 @@ def bolum_sil(bid):
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 # ─── Soru CRUD ───────────────────────────────────────────────────
+def _sec_listesi_olustur(form):
+    """Form verilerinden seçenek listesi oluşturur (esnek metin girişi desteği)."""
+    metinler = form.getlist("secenek")
+    mg_flags = form.getlist("secenek_mg")   # "1" ya da "0", her seçenek için
+    mz_flags = form.getlist("secenek_mz")   # "1" ya da "0", her seçenek için
+    secs = []
+    for i, m in enumerate(metinler):
+        m = m.strip()
+        if not m:
+            continue
+        mg = 1 if i < len(mg_flags) and mg_flags[i] == "1" else 0
+        mz = 1 if i < len(mz_flags) and mz_flags[i] == "1" else 0
+        if mg == 0 and mz == 0:
+            secs.append(m)          # geriye dönük uyumluluk için düz string
+        else:
+            secs.append({"metin": m, "mg": mg, "mz": mz})
+    return secs
+
 @app.route("/admin/soru/ekle",methods=["POST"])
 @giris_gerekli
 def soru_ekle():
     bid=int(request.form["bolum_id"]); aid=int(request.form["anket_id"])
     tip=request.form.get("tip","yildiz")
-    secs=[s.strip() for s in request.form.getlist("secenek") if s.strip()]
+    secs=_sec_listesi_olustur(request.form)
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
@@ -607,7 +629,7 @@ def soru_ekle():
 @giris_gerekli
 def soru_guncelle(sid):
     aid=int(request.form["anket_id"]); tip=request.form.get("tip","yildiz")
-    secs=[s.strip() for s in request.form.getlist("secenek") if s.strip()]
+    secs=_sec_listesi_olustur(request.form)
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
