@@ -285,23 +285,64 @@ function zorunluGuncelle() {
   });
 }
 
+function _soruHataGoster(soruEl) {
+  soruEl.style.outline='2px solid var(--kirmizi)';
+  soruEl.style.borderRadius='var(--r)';
+  soruEl.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(function(){soruEl.style.outline='';},2500);
+}
+
+// Verilen kapsayıcı içindeki tüm zorunlu alanları doğrular; hata varsa false döner
+function _dogrulaKap(kap) {
+  var hata = false;
+
+  // 1) Zorunlu radio grupları — seçili değil mi?
+  kap.querySelectorAll('.soru:not([data-gizli="1"]) input[data-zorunlu="1"][type=radio]').forEach(function(inp){
+    if(hata) return;
+    var secildi = kap.querySelector('[name="'+inp.name+'"]:checked');
+    if(!secildi){ _soruHataGoster(inp.closest('.soru')); hata = true; }
+  });
+  if(hata) return false;
+
+  // 2) Açık durumdaki zorunlu metin alanları (mg=1, mz=1 olan seçenek seçili)
+  kap.querySelectorAll('.soru:not([data-gizli="1"])').forEach(function(soruEl){
+    if(hata) return;
+    // Tekli seçim: seçili radio'nun data-mz=1 ve data-mg=1 mi?
+    var secRadio = soruEl.querySelector('input[type=radio]:checked[data-mg="1"][data-mz="1"]');
+    if(secRadio){
+      // Bu soruda açık metin alanı var mı ve boş mu?
+      var digerDiv = soruEl.querySelector('div[id^="a_s_"], div[id^="t_s_"]');
+      if(digerDiv && digerDiv.style.display !== 'none'){
+        var txt = digerDiv.querySelector('input[type=text]');
+        if(txt && txt.value.trim() === ''){
+          _soruHataGoster(soruEl);
+          txt.focus();
+          hata = true;
+        }
+      }
+    }
+    if(hata) return;
+    // Çoklu seçim: seçili checkbox'lardan data-mg=1, data-mz=1 olanı var mı?
+    var secCbs = soruEl.querySelectorAll('input[type=checkbox]:checked[data-mg="1"][data-mz="1"]');
+    if(secCbs.length > 0){
+      var digerDiv = soruEl.querySelector('div[id^="a_s_"], div[id^="t_s_"]');
+      if(digerDiv && digerDiv.style.display !== 'none'){
+        var txt = digerDiv.querySelector('input[type=text]');
+        if(txt && txt.value.trim() === ''){
+          _soruHataGoster(soruEl);
+          txt.focus();
+          hata = true;
+        }
+      }
+    }
+  });
+  return !hata;
+}
+
 function adimGit(yon) {
   if(yon > 0) {
     var adimEl = document.querySelector('.bolum-adim.aktif');
-    var hata = false;
-    adimEl.querySelectorAll('.soru:not([data-gizli="1"]) input[data-zorunlu="1"][type=radio]').forEach(function(inp){
-      if(hata) return;
-      var secildi = adimEl.querySelector('[name="'+inp.name+'"]:checked');
-      if(!secildi){
-        var soruEl = inp.closest('.soru');
-        soruEl.style.outline='2px solid var(--kirmizi)';
-        soruEl.style.borderRadius='var(--r)';
-        soruEl.scrollIntoView({behavior:'smooth',block:'center'});
-        setTimeout(function(){soruEl.style.outline='';},2000);
-        hata = true;
-      }
-    });
-    if(hata) return;
+    if(!_dogrulaKap(adimEl)) return;
   }
   var adimlar = document.querySelectorAll('.bolum-adim');
   adimlar[mevcutAdim].classList.remove('aktif');
@@ -405,6 +446,17 @@ function yukseklikGonder() {
   var h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight);
   window.parent.postMessage({iframeHeight: h + 60}, '*');
 }
+
+// Form submit — her iki modda da metin alanlarını doğrula
+document.getElementById('anketForm').addEventListener('submit', function(e){
+  var kap;
+  if(mevcutMod === 'adim'){
+    kap = document.querySelector('.bolum-adim.aktif');
+  } else {
+    kap = document.getElementById('anketForm');
+  }
+  if(!_dogrulaKap(kap)){ e.preventDefault(); }
+});
 
 // Başlat
 secimRenkleriRestore();
