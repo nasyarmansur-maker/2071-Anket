@@ -1134,8 +1134,9 @@ function _yaziliYanitlarCiz(){
       // Arama kutusu
       var aId = 'yaz_ara_' + soru.id;
       var lId = 'yaz_liste_' + soru.id;
-      html += '<input type="text" id="' + aId + '" placeholder="Bu yanıtlarda ara…" oninput="yaziliAra('' + aId + '','' + lId + '')" ';
-      html += 'style="width:100%;font-size:12px;margin-bottom:.6rem;box-sizing:border-box;padding:6px 10px;border:1.5px solid var(--kenar);border-radius:var(--r);background:var(--yuzey);color:var(--metin)">';
+      html += '<input type="text" id="' + aId + '" placeholder="Bu yanıtlarda ara…" ';
+      html += 'style="width:100%;font-size:12px;margin-bottom:.6rem;box-sizing:border-box;padding:6px 10px;border:1.5px solid var(--kenar);border-radius:var(--r);background:var(--yuzey);color:var(--metin)" ';
+      html += 'data-liste="' + lId + '">';
       if(met.length){
         html += '<div id="' + lId + '" style="max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:4px">';
         met.forEach(function(m){
@@ -1147,19 +1148,23 @@ function _yaziliYanitlarCiz(){
         html += '<div class="mt-bos">Henüz yazılı yanıt yok</div>';
       }
       div.innerHTML = html;
+      // Attach oninput event properly (avoids inline quote issues)
+      var araEl = div.querySelector('[data-liste]');
+      if(araEl) araEl.addEventListener('input', function(){ yaziliAra(this); });
       kap.appendChild(div);
     });
   });
   if(!bulundu) kap.innerHTML = '<div class="bos-durum"><div class="bos-ikon">📝</div><div>Bu ankette açık uçlu soru bulunmuyor.</div></div>';
 }
 
-function yaziliAra(araId, listeId){
-  var ara = document.getElementById(araId).value.toLowerCase();
+function yaziliAra(inp){
+  var listeId = inp.dataset.liste;
+  var ara = inp.value.toLowerCase();
   var liste = document.getElementById(listeId);
   if(!liste) return;
   var gorunen = 0;
   liste.querySelectorAll('.mt-yorum').forEach(function(el){
-    var goster = !ara || el.dataset.v.includes(ara);
+    var goster = !ara || (el.dataset.v||'').includes(ara);
     el.style.display = goster ? '' : 'none';
     if(goster) gorunen++;
   });
