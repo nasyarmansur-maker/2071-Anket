@@ -291,8 +291,7 @@
     </script>
   </div>
 
-  <!-- Kilit Ekranı Görseli — ayrı form (nested form bug'ı önlemek için form dışında) -->
-  </form>
+  <!-- Kilit Ekranı Görseli -->
   <div class="kart" style="margin-bottom:.75rem" id="kilit-gorsel">
     <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">🔒 Kilit Ekranı Görseli</div>
     <p style="font-size:13px;color:var(--metin-ik);margin-bottom:1rem">
@@ -301,17 +300,13 @@
     {% if kilit_gorsel %}
     <div style="margin-bottom:1rem">
       <img src="{{ kilit_gorsel }}" style="max-width:200px;max-height:150px;border-radius:var(--r);border:1px solid var(--kenar);object-fit:contain;display:block">
-      <form method="POST" action="/admin/kilit_gorsel_sil" style="margin-top:8px">
-        <button type="submit" class="btn btn-tehlike btn-kucuk">🗑 Görseli Kaldır</button>
-      </form>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:6px">
+        <input type="checkbox" name="kilit_gorsel_sil"> 🗑 Görseli kaldır
+      </label>
     </div>
     {% endif %}
-    <form method="POST" action="/admin/kilit_gorsel_yukle" enctype="multipart/form-data">
-      <input type="file" name="kilit_gorsel" accept="image/*" style="font-size:13px">
-      <button type="submit" class="btn btn-gri btn-kucuk" style="margin-top:8px">📤 Yükle</button>
-    </form>
+    <input type="file" name="kilit_gorsel" accept="image/*" style="font-size:13px">
   </div>
-  <form method="POST" enctype="multipart/form-data">
 
   <!-- Tam Veri Yedekleme -->
   <div class="kart" style="margin-bottom:.75rem">
@@ -368,6 +363,43 @@
       <div>
         <label class="alan-lbl">Başlık Yüksekliği (px)</label>
         <input type="number" name="header_yukseklik" value="{{ header_yukseklik }}" min="40" max="120" style="width:80px">
+      </div>
+      <div>
+        <label class="alan-lbl">Ana Sayfa Buton Metni</label>
+        <input type="text" name="header_anasayfa_metin" value="{{ header_anasayfa_metin }}" placeholder="Ana Sayfa" style="width:140px">
+      </div>
+    </div>
+  </div>
+
+  <!-- Görüş Formu Buton & Yönlendirme -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">💬 Görüş Formu Butonları</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <div>
+        <label class="alan-lbl">Geri Butonu</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" name="gorus_geri_buton" {% if gorus_geri_buton=='1' %}checked{% endif %}> Göster
+        </label>
+      </div>
+      <div>
+        <label class="alan-lbl">Ana Sayfa Butonu</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" name="gorus_anasayfa_buton" {% if gorus_anasayfa_buton=='1' %}checked{% endif %}> Göster
+        </label>
+      </div>
+      <div>
+        <label class="alan-lbl">Ana Sayfa Buton Yazısı</label>
+        <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
+      </div>
+      <div>
+        <label class="alan-lbl">Seçili Kategori Rengi</label>
+        <input type="color" name="gorus_secili_renk" value="{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }}"
+               style="width:50px;height:34px;padding:2px;border-radius:var(--r);border:1.5px solid var(--kenar)">
+      </div>
+      <div>
+        <label class="alan-lbl">Seçili Kategori Çerçeve Rengi</label>
+        <input type="color" name="gorus_secili_sinir" value="{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}"
+               style="width:50px;height:34px;padding:2px;border-radius:var(--r);border:1.5px solid var(--kenar)">
       </div>
     </div>
   </div>

@@ -3,23 +3,35 @@
 {% block ekstra_css %}
 <style>
 .gorus-kap{max-width:520px;margin:0 auto;padding:1.5rem 0}
-{% if gorus_bg_renk %}.kap{background:{{ gorus_bg_renk }}}{% endif %}
+{% if gorus_bg_renk %}.kap{background:{{ gorus_bg_renk }} !important}{% endif %}
 .tur-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1.5rem}
-.tur-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:1rem;border:2px solid var(--kenar);border-radius:var(--r-lg);cursor:pointer;transition:all .15s;background:var(--yuzey);position:relative;text-decoration:none}
-{% if gorus_kart_renk %}.tur-btn{background:{{ gorus_kart_renk }}}{% endif %}
+.tur-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:1rem;
+  border:2.5px solid var(--kenar);border-radius:var(--r-lg);cursor:pointer;
+  transition:border-color .15s, background .15s, box-shadow .15s;
+  background:{% if gorus_kart_renk %}{{ gorus_kart_renk }}{% else %}var(--yuzey){% endif %};
+  position:relative}
 .tur-btn input[type=radio]{position:absolute;opacity:0;width:0;height:0}
-.tur-btn .tur-ikon{font-size:32px;line-height:1}
+.tur-btn .tur-ikon{font-size:30px;line-height:1}
 .tur-btn .tur-lbl{font-size:13px;font-weight:700;color:var(--metin)}
-.tur-btn.secili{border-color:var(--ana);box-shadow:0 0 0 3px var(--ana-ac)}
-.tur-btn:hover{border-color:var(--ana-orta)}
-.gorus-textarea{width:100%;min-height:140px;padding:12px;border:1.5px solid var(--kenar);border-radius:var(--r);font-size:14px;font-family:inherit;resize:vertical;background:var(--yuzey);color:var(--metin);outline:none;box-sizing:border-box}
-.gorus-textarea:focus{border-color:var(--ana);box-shadow:0 0 0 3px var(--ana-ac)}
+.tur-btn:hover{border-color:{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }};background:{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }}}
+.tur-btn.secili{
+  border-color:{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }} !important;
+  background:{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }} !important;
+  box-shadow:0 0 0 3px {{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}33;
+}
+.tur-btn.secili .tur-lbl{color:{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}}
+.tur-btn.secili::after{content:'✓';position:absolute;top:7px;right:10px;
+  font-size:14px;font-weight:800;color:{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}}
+.gorus-textarea{width:100%;min-height:140px;padding:12px;border:1.5px solid var(--kenar);
+  border-radius:var(--r);font-size:14px;font-family:inherit;resize:vertical;
+  background:var(--yuzey);color:var(--metin);outline:none;box-sizing:border-box}
+.gorus-textarea:focus{border-color:{{ gorus_secili_sinir if gorus_secili_sinir else 'var(--ana)' }};box-shadow:0 0 0 3px {{ gorus_secili_sinir if gorus_secili_sinir else 'var(--ana)' }}22}
 .karakter-say{font-size:11px;color:var(--metin-uc);text-align:right;margin-top:3px}
 </style>
 {% if gorus_arka_gorsel %}
 <style>
-.kap{background-image:url('{{ gorus_arka_gorsel }}');background-size:cover;background-position:center;background-attachment:fixed}
-.gorus-kap{background:rgba(255,255,255,.92);border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}
+.kap{background-image:url('{{ gorus_arka_gorsel }}');background-size:cover;background-position:center}
+.gorus-kap{background:rgba(255,255,255,.93);border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}
 </style>
 {% endif %}
 {% endblock %}
@@ -37,17 +49,16 @@
     {% endif %}
 
     <form method="POST" id="gorusForm">
-      <div class="tur-grid">
-        {% set turler = [] %}
-        {% if gorus_dilek_aktif=='1' %}{% set _ = turler.append(('dilek', gorus_dilek_ikon, gorus_dilek_renk, gorus_dilek_lbl)) %}{% endif %}
-        {% if gorus_gorus_aktif=='1' %}{% set _ = turler.append(('gorus', gorus_gorus_ikon, gorus_gorus_renk, gorus_gorus_lbl)) %}{% endif %}
-        {% if gorus_sikayet_aktif=='1' %}{% set _ = turler.append(('sikayet', gorus_sikayet_ikon, gorus_sikayet_renk, gorus_sikayet_lbl)) %}{% endif %}
-        {% if gorus_tebrik_aktif=='1' %}{% set _ = turler.append(('tebrik', gorus_tebrik_ikon, gorus_tebrik_renk, gorus_tebrik_lbl)) %}{% endif %}
+      {% set turler = namespace(liste=[]) %}
+      {% if gorus_dilek_aktif=='1' %}{% set _ = turler.liste.append(('dilek', gorus_dilek_ikon, gorus_dilek_renk, gorus_dilek_lbl)) %}{% endif %}
+      {% if gorus_gorus_aktif=='1' %}{% set _ = turler.liste.append(('gorus', gorus_gorus_ikon, gorus_gorus_renk, gorus_gorus_lbl)) %}{% endif %}
+      {% if gorus_sikayet_aktif=='1' %}{% set _ = turler.liste.append(('sikayet', gorus_sikayet_ikon, gorus_sikayet_renk, gorus_sikayet_lbl)) %}{% endif %}
+      {% if gorus_tebrik_aktif=='1' %}{% set _ = turler.liste.append(('tebrik', gorus_tebrik_ikon, gorus_tebrik_renk, gorus_tebrik_lbl)) %}{% endif %}
 
-        {% for tur_id, tur_ikon, tur_renk, tur_lbl in turler %}
+      <div class="tur-grid">
+        {% for tur_id, tur_ikon, tur_renk, tur_lbl in turler.liste %}
         <label class="tur-btn {% if loop.first %}secili{% endif %}"
-               id="lbl_{{ tur_id }}"
-               style="{% if tur_renk %}background:{{ tur_renk }};{% endif %}">
+               id="lbl_{{ tur_id }}">
           <input type="radio" name="tur" value="{{ tur_id }}"
                  {% if loop.first %}checked{% endif %}
                  onchange="turSec('{{ tur_id }}')">
@@ -70,16 +81,20 @@
       <button type="submit" class="btn btn-ana btn-tam" style="padding:13px;font-size:15px">
         ✉️ Gönder
       </button>
+      {% if gorus_anasayfa_buton=='1' %}
       <a href="/" class="btn btn-gri btn-tam" style="padding:13px;font-size:15px;margin-top:8px;display:block;text-align:center">
-        ← Geri Dön
+        ← {{ gorus_anasayfa_metin }}
       </a>
+      {% endif %}
+      {% if gorus_geri_buton=='1' %}
+      <button type="button" onclick="history.back()" class="btn btn-gri btn-tam" style="padding:11px;font-size:14px;margin-top:6px">
+        ← Geri
+      </button>
+      {% endif %}
     </form>
   </div>
 </div>
 <script>
-var turRenkler = {
-  {% for tur_id, tur_ikon, tur_renk, tur_lbl in turler %}'{{ tur_id }}':'{{ tur_renk }}',{% endfor %}
-};
 function turSec(tur) {
   document.querySelectorAll('.tur-btn').forEach(function(b){ b.classList.remove('secili'); });
   var lbl = document.getElementById('lbl_'+tur);

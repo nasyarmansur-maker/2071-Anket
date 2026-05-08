@@ -37,7 +37,7 @@
       <div class="alan-sira">
         <label>Görüş Formu</label>
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
-          <input type="checkbox" name="gorus_aktif" {% if gorus_aktif=='1' %}checked{% endif %}> Aktif
+          <input type="checkbox" name="gorus_aktif" value="1" {% if gorus_aktif=='1' %}checked{% endif %}> Aktif
         </label>
       </div>
       <div class="alan-sira">
@@ -83,6 +83,46 @@
         <label>Önizleme</label>
         <div id="buton_oniz" style="display:inline-block;padding:10px 20px;border-radius:var(--r-lg);color:#fff;font-size:13px;font-weight:600;background:{{ gorus_buton_renk if gorus_buton_renk else '#185FA5' }}">
           {{ gorus_buton_metin }}
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--kenar)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:.75rem">Form İçi Butonlar</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        <div>
+          <label class="alan-lbl">← Geri Butonu</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" name="gorus_geri_buton" value="1" {% if gorus_geri_buton=='1' %}checked{% endif %}> Göster
+          </label>
+        </div>
+        <div>
+          <label class="alan-lbl">Ana Sayfa Butonu</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" name="gorus_anasayfa_buton" value="1" {% if gorus_anasayfa_buton=='1' %}checked{% endif %}> Göster
+          </label>
+        </div>
+        <div>
+          <label class="alan-lbl">Ana Sayfa Buton Yazısı</label>
+          <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön">
+        </div>
+        <div>
+          <label class="alan-lbl">Seçili Kategori Rengi</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" class="renk-inp" name="gorus_secili_renk"
+                   value="{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }}"
+                   oninput="guncelSeciliOniz(this.value, null)">
+          </div>
+        </div>
+        <div>
+          <label class="alan-lbl">Seçili Çerçeve Rengi</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="color" class="renk-inp" name="gorus_secili_sinir"
+                   value="{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}"
+                   oninput="guncelSeciliOniz(null, this.value)">
+            <div id="secili_oniz" style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-lg);border:3px solid {{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }};background:{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }};font-size:12px;font-weight:600">
+              Seçili Önizleme
+            </div>
+          </div>
         </div>
       </div>
     </div>
