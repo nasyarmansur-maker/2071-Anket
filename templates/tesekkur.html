@@ -8,7 +8,11 @@
     <strong>{{ anket.baslik }}</strong> yanıtınız başarıyla kaydedildi. Görüşleriniz için teşekkür ederiz.
   </p>
   <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-    <a href="/" class="btn btn-ana">Ana Sayfaya Dön</a>
+    {% if anket_anasayfa_buton=='1' %}
+    <a href="{{ anket_anasayfa_url if anket_anasayfa_url else '/' }}" class="btn btn-ana">
+      ← {{ anket_anasayfa_metin if anket_anasayfa_metin else 'Ana Sayfaya Dön' }}
+    </a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

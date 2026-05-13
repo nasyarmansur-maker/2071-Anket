@@ -94,6 +94,11 @@ def db_init():
             "gorus_sikayet_lbl": "Şikayet", "gorus_tebrik_lbl": "Teşekkür & Tebrik",
             "gorus_logo": "", "gorus_arka_gorsel": "",
             "gorus_bg_renk": "", "gorus_kart_renk": "",
+            "gorus_anasayfa_url": "/",
+            "anket_anasayfa_buton": "1",
+            "anket_geri_buton": "0",
+            "anket_anasayfa_metin": "Ana Sayfaya Dön",
+            "anket_anasayfa_url": "/",
             "header_aktif": "1",
             "header_bg_renk": "",
             "header_yazi_renk": "",
@@ -242,6 +247,11 @@ def gctx():
             "gorus_geri_buton":ayar("gorus_geri_buton","1"),
             "gorus_anasayfa_buton":ayar("gorus_anasayfa_buton","1"),
             "gorus_anasayfa_metin":ayar("gorus_anasayfa_metin","Ana Sayfaya Dön"),
+            "gorus_anasayfa_url":ayar("gorus_anasayfa_url","/"),
+            "anket_anasayfa_buton":ayar("anket_anasayfa_buton","1"),
+            "anket_geri_buton":ayar("anket_geri_buton","0"),
+            "anket_anasayfa_metin":ayar("anket_anasayfa_metin","Ana Sayfaya Dön"),
+            "anket_anasayfa_url":ayar("anket_anasayfa_url","/"),
             "header_anasayfa_metin":ayar("header_anasayfa_metin","Ana Sayfa")}
 
 def giris_gerekli(f):
@@ -379,6 +389,9 @@ def tesekkur(anket_id):
     with db() as c:
         a=c.execute("SELECT * FROM anketler WHERE id=?",(anket_id,)).fetchone()
     ctx=gctx(); ctx["anket"]=dict(a) if a else {"baslik":"Anket","icon":"✅","id":0}
+    ctx["anket_anasayfa_buton"]=ayar("anket_anasayfa_buton","1")
+    ctx["anket_anasayfa_metin"]=ayar("anket_anasayfa_metin","Ana Sayfaya Dön")
+    ctx["anket_anasayfa_url"]=ayar("anket_anasayfa_url","/")
     return render_template("tesekkur.html",**ctx)
 
 # ─── Admin giriş ─────────────────────────────────────────────────
@@ -777,12 +790,16 @@ def gorus_form():
         "gorus_geri_buton":ga("gorus_geri_buton","1"),
         "gorus_anasayfa_buton":ga("gorus_anasayfa_buton","1"),
         "gorus_anasayfa_metin":ga("gorus_anasayfa_metin","Ana Sayfaya Dön"),
+        "gorus_anasayfa_url":ga("gorus_anasayfa_url","/"),
     })
     return render_template("gorus_form.html", **ctx)
 
 @app.route("/gorus/tesekkur")
 def gorus_tesekkur():
     ctx = gctx()
+    ctx["gorus_anasayfa_buton"]=ayar("gorus_anasayfa_buton","1")
+    ctx["gorus_anasayfa_metin"]=ayar("gorus_anasayfa_metin","Ana Sayfaya Dön")
+    ctx["gorus_anasayfa_url"]=ayar("gorus_anasayfa_url","/")
     return render_template("gorus_tesekkur.html", **ctx)
 
 @app.route("/admin/gorusler")
@@ -790,6 +807,7 @@ def gorus_tesekkur():
 def admin_gorusler():
     filtre_tur = request.args.get("tur","")
     filtre_okundu = request.args.get("okundu","")
+    filtre_arama = request.args.get("arama","").lower()
     with db() as c:
         q = "SELECT * FROM gorusler WHERE 1=1"
         params = []
@@ -800,13 +818,17 @@ def admin_gorusler():
         elif filtre_okundu == "1":
             q += " AND okundu=1"
         q += " ORDER BY id DESC"
-        liste = [dict(r) for r in c.execute(q, params).fetchall()]
+        tum = [dict(r) for r in c.execute(q, params).fetchall()]
+        if filtre_arama:
+            liste = [g for g in tum if filtre_arama in g["icerik"].lower()]
+        else:
+            liste = tum
         sayilar = {r["tur"]:r["n"] for r in c.execute(
             "SELECT tur, COUNT(*) as n FROM gorusler GROUP BY tur").fetchall()}
         okunmamis = c.execute("SELECT COUNT(*) FROM gorusler WHERE okundu=0").fetchone()[0]
     ctx = gctx()
     ctx.update({"liste":liste,"sayilar":sayilar,"okunmamis":okunmamis,
-                "filtre_tur":filtre_tur,"filtre_okundu":filtre_okundu})
+                "filtre_tur":filtre_tur,"filtre_okundu":filtre_okundu,"filtre_arama":filtre_arama})
     return render_template("admin_gorusler.html", **ctx)
 
 @app.route("/admin/gorus/<int:gid>/okundu", methods=["POST"])
@@ -832,6 +854,20 @@ def gorusler_tumunu_okundu():
         c.execute("UPDATE gorusler SET okundu=1")
         c.commit()
     return redirect(url_for("admin_gorusler"))
+
+@app.route("/admin/gorusler/tumunu_sil", methods=["POST"])
+@giris_gerekli
+def gorusler_tumunu_sil():
+    filtre_tur = request.form.get("tur","")
+    with db() as c:
+        if filtre_tur:
+            c.execute("DELETE FROM gorusler WHERE tur=?", (filtre_tur,))
+        else:
+            c.execute("DELETE FROM gorusler")
+        c.commit()
+    ref = url_for("admin_gorusler")
+    if filtre_tur: ref += f"?tur={filtre_tur}"
+    return redirect(ref)
 
 # ─── Tam Veri Yedekleme (Yanıtlar dahil) ─────────────────────────
 @app.route("/admin/tam_veri_yedek/indir")
@@ -919,7 +955,7 @@ def admin_gorus_ayarlar():
                   "gorus_sikayet_ikon","gorus_sikayet_renk","gorus_sikayet_lbl",
                   "gorus_tebrik_ikon","gorus_tebrik_renk","gorus_tebrik_lbl",
                   "gorus_bg_renk","gorus_kart_renk",
-                  "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin"]:
+                  "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin","gorus_anasayfa_url"]:
             v = request.form.get(k)
             if v is not None: ayar_set(k, v)
         fl = request.files.get("gorus_logo")
@@ -973,6 +1009,7 @@ def admin_gorus_ayarlar():
         "gorus_geri_buton":ga("gorus_geri_buton","1"),
         "gorus_anasayfa_buton":ga("gorus_anasayfa_buton","1"),
         "gorus_anasayfa_metin":ga("gorus_anasayfa_metin","Ana Sayfaya Dön"),
+        "gorus_anasayfa_url":ga("gorus_anasayfa_url","/"),
     })
     return render_template("admin_gorus_ayarlar.html", **ctx)
 
@@ -1275,31 +1312,23 @@ def admin_ayarlar():
                   "hosgeldin_metin","alt_yazi","smtp_host","smtp_port",
                   "smtp_user","smtp_pass","bildirim_email",
                   "anket_varsayilan_gorunum","saat_dilimi_offset",
-                  "gorus_aktif","gorus_baslik","gorus_aciklama","gorus_buton_metin",
-                  "gorus_buton_renk","gorus_buton_yeri","gorus_tema",
-                  "gorus_dilek_ikon","gorus_dilek_renk","gorus_dilek_lbl",
-                  "gorus_gorus_ikon","gorus_gorus_renk","gorus_gorus_lbl",
-                  "gorus_sikayet_ikon","gorus_sikayet_renk","gorus_sikayet_lbl",
-                  "gorus_tebrik_ikon","gorus_tebrik_renk","gorus_tebrik_lbl",
-                  "gorus_bg_renk","gorus_kart_renk",
+                  "gorus_buton_renk","gorus_buton_yeri",
                   "header_bg_renk","header_yazi_renk","header_logo_boyut",
-                  "header_baslik_boyut","header_sehir_aktif","header_anasayfa_aktif","header_yukseklik",
+                  "header_baslik_boyut","header_yukseklik",
                   "header_anasayfa_metin",
-                  "gorus_secili_renk","gorus_secili_sinir","gorus_geri_buton","gorus_anasayfa_buton","gorus_anasayfa_metin",
+                  "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin",
+                  "gorus_anasayfa_url","gorus_buton_metin",
+                  "anket_anasayfa_metin","anket_anasayfa_url",
                   "hero_baslik","hero_alt_baslik",
                   "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
-        ayar_set("bildirim_aktif","1" if request.form.get("bildirim_aktif") else "0")
-        ayar_set("hero_gorsel_orijinal","1" if request.form.get("hero_gorsel_orijinal") else "0")
-        ayar_set("anket_gorunum_secim_goster","1" if request.form.get("anket_gorunum_secim_goster") else "0")
-        ayar_set("gorus_dilek_aktif","1" if request.form.get("gorus_dilek_aktif") else "0")
-        ayar_set("gorus_gorus_aktif","1" if request.form.get("gorus_gorus_aktif") else "0")
-        ayar_set("gorus_sikayet_aktif","1" if request.form.get("gorus_sikayet_aktif") else "0")
-        ayar_set("gorus_tebrik_aktif","1" if request.form.get("gorus_tebrik_aktif") else "0")
-        ayar_set("header_aktif","1" if request.form.get("header_aktif") else "0")
-        ayar_set("gorus_geri_buton","1" if request.form.get("gorus_geri_buton") else "0")
-        ayar_set("gorus_anasayfa_buton","1" if request.form.get("gorus_anasayfa_buton") else "0")
+        # Checkbox alanları — işaretlenmeyince "0" kaydet
+        for ck in ["bildirim_aktif","hero_gorsel_orijinal","anket_gorunum_secim_goster",
+                   "header_aktif","header_sehir_aktif","header_anasayfa_aktif",
+                   "gorus_aktif","gorus_anasayfa_buton","gorus_geri_buton",
+                   "anket_anasayfa_buton","anket_geri_buton"]:
+            ayar_set(ck,"1" if request.form.get(ck) else "0")
         f=request.files.get("amblem")
         if f and f.filename:
             data=f.read(); ext=f.filename.rsplit(".",1)[-1].lower()
@@ -1367,7 +1396,16 @@ def admin_ayarlar():
                 "header_baslik_boyut":ayar("header_baslik_boyut","18"),
                 "header_sehir_aktif":ayar("header_sehir_aktif","1"),
                 "header_anasayfa_aktif":ayar("header_anasayfa_aktif","1"),
-                "header_yukseklik":ayar("header_yukseklik","60")})
+                "header_yukseklik":ayar("header_yukseklik","60"),
+                "gorus_anasayfa_url":ayar("gorus_anasayfa_url","/"),
+                "gorus_buton_metin":ayar("gorus_buton_metin","💬 Görüş, Dilek & Şikayet"),
+                "gorus_anasayfa_buton":ayar("gorus_anasayfa_buton","1"),
+                "gorus_geri_buton":ayar("gorus_geri_buton","1"),
+                "gorus_anasayfa_metin":ayar("gorus_anasayfa_metin","Ana Sayfaya Dön"),
+                "anket_anasayfa_buton":ayar("anket_anasayfa_buton","1"),
+                "anket_geri_buton":ayar("anket_geri_buton","0"),
+                "anket_anasayfa_metin":ayar("anket_anasayfa_metin","Ana Sayfaya Dön"),
+                "anket_anasayfa_url":ayar("anket_anasayfa_url","/")})
 
     return render_template("admin_ayarlar.html",**ctx)
 

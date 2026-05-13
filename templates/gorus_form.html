@@ -8,7 +8,7 @@
 .tur-btn{display:flex;flex-direction:column;align-items:center;gap:6px;padding:1rem;
   border:2.5px solid var(--kenar);border-radius:var(--r-lg);cursor:pointer;
   transition:border-color .15s, background .15s, box-shadow .15s;
-  background:{% if gorus_kart_renk %}{{ gorus_kart_renk }}{% else %}var(--yuzey){% endif %};
+  background:var(--yuzey);
   position:relative}
 .tur-btn input[type=radio]{position:absolute;opacity:0;width:0;height:0}
 .tur-btn .tur-ikon{font-size:30px;line-height:1}
@@ -30,7 +30,12 @@
 </style>
 {% if gorus_arka_gorsel %}
 <style>
-.kap{background-image:url('{{ gorus_arka_gorsel }}');background-size:cover;background-position:center}
+.kap{
+  background-image:url('{{ gorus_arka_gorsel }}') !important;
+  background-size:cover !important;
+  background-position:center !important;
+  background-repeat:no-repeat !important;
+}
 .gorus-kap{background:rgba(255,255,255,.93);border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}
 </style>
 {% endif %}
@@ -58,15 +63,25 @@
       <div class="tur-grid">
         {% for tur_id, tur_ikon, tur_renk, tur_lbl in turler.liste %}
         <label class="tur-btn {% if loop.first %}secili{% endif %}"
-               id="lbl_{{ tur_id }}">
+               id="lbl_{{ tur_id }}"
+               style="background:{{ tur_renk if tur_renk else 'var(--yuzey)' }}">
           <input type="radio" name="tur" value="{{ tur_id }}"
                  {% if loop.first %}checked{% endif %}
-                 onchange="turSec('{{ tur_id }}')">
+                 onchange="turSec('{{ tur_id }}', '{{ tur_renk if tur_renk else '' }}')">
           <span class="tur-ikon">{{ tur_ikon }}</span>
           <span class="tur-lbl">{{ tur_lbl }}</span>
         </label>
         {% endfor %}
       </div>
+
+      <!-- Kategori renklerini JS'e aktar -->
+      <script>
+      var turRenkler = {
+        {% for tur_id, tur_ikon, tur_renk, tur_lbl in turler.liste %}
+        '{{ tur_id }}': '{{ tur_renk if tur_renk else "" }}',
+        {% endfor %}
+      };
+      </script>
 
       <div style="margin-bottom:1rem">
         <label style="font-size:13px;font-weight:600;color:var(--metin-ik);margin-bottom:6px;display:block">
@@ -82,7 +97,7 @@
         ✉️ Gönder
       </button>
       {% if gorus_anasayfa_buton=='1' %}
-      <a href="/" class="btn btn-gri btn-tam" style="padding:13px;font-size:15px;margin-top:8px;display:block;text-align:center">
+      <a href="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" class="btn btn-gri btn-tam" style="padding:13px;font-size:15px;margin-top:8px;display:block;text-align:center">
         ← {{ gorus_anasayfa_metin }}
       </a>
       {% endif %}
@@ -95,8 +110,13 @@
   </div>
 </div>
 <script>
-function turSec(tur) {
-  document.querySelectorAll('.tur-btn').forEach(function(b){ b.classList.remove('secili'); });
+function turSec(tur, renk) {
+  document.querySelectorAll('.tur-btn').forEach(function(b){
+    b.classList.remove('secili');
+    // Seçili olmayan butonu orijinal rengine döndür
+    var tid = b.id ? b.id.replace('lbl_','') : '';
+    if(tid && turRenkler[tid]) b.style.background = turRenkler[tid];
+  });
   var lbl = document.getElementById('lbl_'+tur);
   if(lbl) lbl.classList.add('secili');
 }

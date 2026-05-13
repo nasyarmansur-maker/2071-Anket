@@ -371,6 +371,29 @@
     </div>
   </div>
 
+  <!-- Anket Butonları -->
+  <div class="kart" style="margin-bottom:.75rem">
+    <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">📋 Anket Butonları</div>
+    <p style="font-size:12px;color:var(--metin-ik);margin-bottom:1rem">Anketi dolduran kullanıcıya teşekkür sayfasında gösterilecek butonlar.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <div>
+        <label class="alan-lbl">Ana Sayfa Butonu</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" name="anket_anasayfa_buton" {% if anket_anasayfa_buton=='1' %}checked{% endif %}> Göster
+        </label>
+      </div>
+      <div>
+        <label class="alan-lbl">Buton Yazısı</label>
+        <input type="text" name="anket_anasayfa_metin" value="{{ anket_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
+      </div>
+      <div>
+        <label class="alan-lbl">Yönlendirme URL</label>
+        <input type="text" name="anket_anasayfa_url" value="{{ anket_anasayfa_url }}" placeholder="/" style="width:180px">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Boş bırakılırsa anasayfaya yönlendirir.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Görüş Formu Buton & Yönlendirme -->
   <div class="kart" style="margin-bottom:.75rem">
     <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">💬 Görüş Formu Butonları</div>
@@ -388,18 +411,13 @@
         </label>
       </div>
       <div>
-        <label class="alan-lbl">Ana Sayfa Buton Yazısı</label>
+        <label class="alan-lbl">Buton Yazısı</label>
         <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
       </div>
       <div>
-        <label class="alan-lbl">Seçili Kategori Rengi</label>
-        <input type="color" name="gorus_secili_renk" value="{{ gorus_secili_renk if gorus_secili_renk else '#e8f0ff' }}"
-               style="width:50px;height:34px;padding:2px;border-radius:var(--r);border:1.5px solid var(--kenar)">
-      </div>
-      <div>
-        <label class="alan-lbl">Seçili Kategori Çerçeve Rengi</label>
-        <input type="color" name="gorus_secili_sinir" value="{{ gorus_secili_sinir if gorus_secili_sinir else '#185FA5' }}"
-               style="width:50px;height:34px;padding:2px;border-radius:var(--r);border:1.5px solid var(--kenar)">
+        <label class="alan-lbl">Yönlendirme URL</label>
+        <input type="text" name="gorus_anasayfa_url" value="{{ gorus_anasayfa_url }}" placeholder="/" style="width:180px">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Boş bırakılırsa anasayfaya yönlendirir.</div>
       </div>
     </div>
   </div>

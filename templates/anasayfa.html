@@ -4,24 +4,18 @@
 <div class="kap">
   <div class="hero">
 
-    <!-- Hero Görseli (amblemden bağımsız, ayrıca yüklenebilir) -->
+    <!-- Hero Görseli -->
     {% if hero_gorsel %}
       {% if hero_gorsel_orijinal == "1" %}
-        {# Orijinal boyut: sadece max-width sınırı, şekil yok #}
         <img src="{{ hero_gorsel }}"
              style="max-width:min({{ hero_gorsel_genislik }}px, 90%);height:auto;
                     display:block;margin:0 auto 14px;"
              alt="Okul Görseli">
       {% else %}
-        {% if hero_gorsel_sekil == "yuvarlak" %}
-          {% set radius = "50%" %}
-        {% elif hero_gorsel_sekil == "oval" %}
-          {% set radius = "40% / 50%" %}
-        {% elif hero_gorsel_sekil == "kose_yuvarlak" %}
-          {% set radius = "16px" %}
-        {% else %}
-          {% set radius = "0" %}
-        {% endif %}
+        {% if hero_gorsel_sekil == "yuvarlak" %}{% set radius = "50%" %}
+        {% elif hero_gorsel_sekil == "oval" %}{% set radius = "40% / 50%" %}
+        {% elif hero_gorsel_sekil == "kose_yuvarlak" %}{% set radius = "16px" %}
+        {% else %}{% set radius = "0" %}{% endif %}
         <img src="{{ hero_gorsel }}"
              style="width:{{ hero_gorsel_genislik }}px;max-width:90%;height:auto;
                     border-radius:{{ radius }};object-fit:cover;margin-bottom:14px;
@@ -32,17 +26,24 @@
       <img src="{{ amblem }}" class="hero-amblem" alt="Okul Amblemi">
     {% endif %}
 
-    <!-- Hero Başlık (boşsa okul adı göster) -->
     <h1 style="font-size:{{ hero_baslik_boyut }}px;font-weight:800;margin-bottom:6px">
       {{ hero_baslik if hero_baslik else okul_adi }}
     </h1>
-
-    <!-- Hero Alt Başlık (boşsa hosgeldin metni göster) -->
-    <p style="font-size:{{ hero_alt_boyut }}px;color:var(--metin-ik);
-              max-width:520px;margin:0 auto">
+    <p style="font-size:{{ hero_alt_boyut }}px;color:var(--metin-ik);max-width:520px;margin:0 auto">
       {{ hero_alt_baslik if hero_alt_baslik else hosgeldin }}
     </p>
   </div>
+
+  <!-- Görüş butonu ÜST konumu -->
+  {% if gorus_aktif=='1' and gorus_buton_yeri=='ust' %}
+  <div style="text-align:center;margin-bottom:1.25rem">
+    <a href="/gorus"
+       style="display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:var(--r-lg);font-size:13px;font-weight:600;text-decoration:none;
+              {% if gorus_buton_renk %}background:{{ gorus_buton_renk }};color:#fff;border:none;{% else %}border:1.5px solid var(--kenar);background:var(--yuzey);color:var(--metin-ik);{% endif %}">
+      {{ gorus_buton_metin }}
+    </a>
+  </div>
+  {% endif %}
 
   {% if gorunum == "liste" %}
   <div class="rol-liste">
@@ -85,7 +86,7 @@
     {% if a.simdiki_aktif %}
     <a href="/anket/{{ a.id }}" class="rol-kart"
        {% if a.kart_renk and a.kart_renk != '#ffffff' %}
-       style="background:{{ a.kart_renk }};border-color:{{ a.kart_renk }};color:{% if a.kart_renk_koyu %}#fff{% else %}var(--metin){% endif %}"
+       style="background:{{ a.kart_renk }};border-color:{{ a.kart_renk }};color:var(--metin)"
        {% endif %}>
       <span class="icon">{{ a.icon }}</span>
       <h2>{{ a.baslik }}</h2>
@@ -103,16 +104,6 @@
   </div>
   {% endif %}
 
-  {% if gorus_aktif=='1' and gorus_buton_yeri=='ust' %}
-  <div style="text-align:center;margin-bottom:1.25rem">
-    <a href="/gorus"
-       style="display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:var(--r-lg);font-size:13px;font-weight:600;text-decoration:none;
-              {% if gorus_buton_renk %}background:{{ gorus_buton_renk }};color:#fff;border:none;{% else %}border:1.5px solid var(--kenar);background:var(--yuzey);color:var(--metin-ik);{% endif %}">
-      {{ gorus_buton_metin }}
-    </a>
-  </div>
-  {% endif %}
-
   {% if not anketler %}
   <div class="bos-durum">Henüz aktif anket bulunmuyor.</div>
   {% endif %}
@@ -121,7 +112,7 @@
     {{ alt_yazi }}
   </p>
 
-  <!-- Görüş / Dilek / Şikayet butonu -->
+  <!-- Görüş butonu ALT konumu -->
   {% if gorus_aktif=='1' and gorus_buton_yeri=='alt' %}
   <div style="text-align:center;margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid var(--kenar)">
     <a href="/gorus"

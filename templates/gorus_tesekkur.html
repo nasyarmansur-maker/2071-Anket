@@ -7,7 +7,13 @@
   <p style="font-size:14px;color:var(--metin-ik);margin-bottom:2rem;max-width:340px;margin-left:auto;margin-right:auto">
     Görüş ve önerinizi bizimle paylaştığınız için teşekkür ederiz. En kısa sürede değerlendirileceğini bilmenizi isteriz.
   </p>
-  <a href="/" class="btn btn-ana" style="padding:12px 28px;font-size:15px">Ana Sayfaya Dön</a>
-  <a href="/gorus" class="btn btn-gri" style="padding:12px 28px;font-size:15px;margin-top:10px;display:block">Yeni Mesaj Gönder</a>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+    {% if gorus_anasayfa_buton=='1' %}
+    <a href="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" class="btn btn-ana" style="padding:12px 28px;font-size:15px">
+      ← {{ gorus_anasayfa_metin if gorus_anasayfa_metin else 'Ana Sayfaya Dön' }}
+    </a>
+    {% endif %}
+    <a href="/gorus" class="btn btn-gri" style="padding:12px 28px;font-size:15px">✉️ Yeni Mesaj Gönder</a>
+  </div>
 </div>
 {% endblock %}
