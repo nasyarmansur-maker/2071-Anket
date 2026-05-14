@@ -77,7 +77,7 @@ def db_init():
             "smtp_pass": "",
             "bildirim_email": "",
             "bildirim_aktif": "0",
-            "kilit_gorsel": "",
+            "kilit_gorsel": "", "kilit_gorsel_genislik": "120", "kilit_gorsel_sekil": "kare",
             "saat_dilimi_offset": "3",
             "gorus_aktif": "1",
             "gorus_baslik": "Görüş, Dilek & Şikayetler",
@@ -93,12 +93,12 @@ def db_init():
             "gorus_dilek_lbl": "Dilek & Temenni", "gorus_gorus_lbl": "Görüş & Öneri",
             "gorus_sikayet_lbl": "Şikayet", "gorus_tebrik_lbl": "Teşekkür & Tebrik",
             "gorus_logo": "", "gorus_arka_gorsel": "",
-            "gorus_bg_renk": "", "gorus_kart_renk": "",
-            "gorus_anasayfa_url": "/",
+            "gorus_bg_renk": "", "gorus_kart_renk": "", "gorus_kart_saydam": "93",
+            "gorus_anasayfa_url": "/", "gorus_anasayfa_url_tip": "ic",
             "anket_anasayfa_buton": "1",
             "anket_geri_buton": "0",
             "anket_anasayfa_metin": "Ana Sayfaya Dön",
-            "anket_anasayfa_url": "/",
+            "anket_anasayfa_url": "/", "anket_anasayfa_url_tip": "ic",
             "header_aktif": "1",
             "header_bg_renk": "",
             "header_yazi_renk": "",
@@ -320,6 +320,8 @@ def anket(anket_id):
         if zaten_doldurdu:
             kilit_gorsel = ayar("kilit_gorsel", "")
             ctx=gctx(); ctx["anket"]=a; ctx["kilit_gorsel"]=kilit_gorsel
+            ctx["kilit_gorsel_genislik"]=ayar("kilit_gorsel_genislik","120")
+            ctx["kilit_gorsel_sekil"]=ayar("kilit_gorsel_sekil","kare")
             return render_template("zaten_dolduruldu.html",**ctx)
     if request.method=="POST":
         # Gizli alan ile localStorage kontrolü — JS kayıtlıysa bunu gönderir
@@ -392,6 +394,7 @@ def tesekkur(anket_id):
     ctx["anket_anasayfa_buton"]=ayar("anket_anasayfa_buton","1")
     ctx["anket_anasayfa_metin"]=ayar("anket_anasayfa_metin","Ana Sayfaya Dön")
     ctx["anket_anasayfa_url"]=ayar("anket_anasayfa_url","/")
+    ctx["anket_anasayfa_url_tip"]=ayar("anket_anasayfa_url_tip","ic")
     return render_template("tesekkur.html",**ctx)
 
 # ─── Admin giriş ─────────────────────────────────────────────────
@@ -769,6 +772,7 @@ def gorus_form():
         "gorus_arka_gorsel":ga("gorus_arka_gorsel"),
         "gorus_bg_renk":ga("gorus_bg_renk"),
         "gorus_kart_renk":ga("gorus_kart_renk"),
+        "gorus_kart_saydam":ga("gorus_kart_saydam","93"),
         "gorus_dilek_aktif":ga("gorus_dilek_aktif","1"),
         "gorus_dilek_ikon":ga("gorus_dilek_ikon","🌟"),
         "gorus_dilek_renk":ga("gorus_dilek_renk","#fef9e7"),
@@ -791,6 +795,7 @@ def gorus_form():
         "gorus_anasayfa_buton":ga("gorus_anasayfa_buton","1"),
         "gorus_anasayfa_metin":ga("gorus_anasayfa_metin","Ana Sayfaya Dön"),
         "gorus_anasayfa_url":ga("gorus_anasayfa_url","/"),
+        "gorus_anasayfa_url_tip":ga("gorus_anasayfa_url_tip","ic"),
     })
     return render_template("gorus_form.html", **ctx)
 
@@ -800,6 +805,7 @@ def gorus_tesekkur():
     ctx["gorus_anasayfa_buton"]=ayar("gorus_anasayfa_buton","1")
     ctx["gorus_anasayfa_metin"]=ayar("gorus_anasayfa_metin","Ana Sayfaya Dön")
     ctx["gorus_anasayfa_url"]=ayar("gorus_anasayfa_url","/")
+    ctx["gorus_anasayfa_url_tip"]=ayar("gorus_anasayfa_url_tip","ic")
     return render_template("gorus_tesekkur.html", **ctx)
 
 @app.route("/admin/gorusler")
@@ -954,8 +960,8 @@ def admin_gorus_ayarlar():
                   "gorus_gorus_ikon","gorus_gorus_renk","gorus_gorus_lbl",
                   "gorus_sikayet_ikon","gorus_sikayet_renk","gorus_sikayet_lbl",
                   "gorus_tebrik_ikon","gorus_tebrik_renk","gorus_tebrik_lbl",
-                  "gorus_bg_renk","gorus_kart_renk",
-                  "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin","gorus_anasayfa_url"]:
+                  "gorus_bg_renk","gorus_kart_renk","gorus_kart_saydam",
+                  "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin","gorus_anasayfa_url","gorus_anasayfa_url_tip"]:
             v = request.form.get(k)
             if v is not None: ayar_set(k, v)
         fl = request.files.get("gorus_logo")
@@ -988,6 +994,7 @@ def admin_gorus_ayarlar():
         "gorus_arka_gorsel":ga("gorus_arka_gorsel"),
         "gorus_bg_renk":ga("gorus_bg_renk"),
         "gorus_kart_renk":ga("gorus_kart_renk"),
+        "gorus_kart_saydam":ga("gorus_kart_saydam","93"),
         "gorus_dilek_aktif":ga("gorus_dilek_aktif","1"),
         "gorus_dilek_ikon":ga("gorus_dilek_ikon","🌟"),
         "gorus_dilek_renk":ga("gorus_dilek_renk","#fef9e7"),
@@ -1010,6 +1017,7 @@ def admin_gorus_ayarlar():
         "gorus_anasayfa_buton":ga("gorus_anasayfa_buton","1"),
         "gorus_anasayfa_metin":ga("gorus_anasayfa_metin","Ana Sayfaya Dön"),
         "gorus_anasayfa_url":ga("gorus_anasayfa_url","/"),
+        "gorus_anasayfa_url_tip":ga("gorus_anasayfa_url_tip","ic"),
     })
     return render_template("admin_gorus_ayarlar.html", **ctx)
 
@@ -1317,16 +1325,17 @@ def admin_ayarlar():
                   "header_baslik_boyut","header_yukseklik",
                   "header_anasayfa_metin",
                   "gorus_secili_renk","gorus_secili_sinir","gorus_anasayfa_metin",
-                  "gorus_anasayfa_url","gorus_buton_metin",
-                  "anket_anasayfa_metin","anket_anasayfa_url",
+                  "gorus_anasayfa_url","gorus_anasayfa_url_tip","gorus_buton_metin",
+                  "anket_anasayfa_metin","anket_anasayfa_url","anket_anasayfa_url_tip",
                   "hero_baslik","hero_alt_baslik",
-                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut"]:
+                  "hero_gorsel_genislik","hero_gorsel_sekil","hero_baslik_boyut","hero_alt_boyut",
+                  "kilit_gorsel_genislik","kilit_gorsel_sekil"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
         # Checkbox alanları — işaretlenmeyince "0" kaydet
         for ck in ["bildirim_aktif","hero_gorsel_orijinal","anket_gorunum_secim_goster",
                    "header_aktif","header_sehir_aktif","header_anasayfa_aktif",
-                   "gorus_aktif","gorus_anasayfa_buton","gorus_geri_buton",
+                   "gorus_anasayfa_buton","gorus_geri_buton",
                    "anket_anasayfa_buton","anket_geri_buton"]:
             ayar_set(ck,"1" if request.form.get(ck) else "0")
         f=request.files.get("amblem")
@@ -1389,6 +1398,8 @@ def admin_ayarlar():
                 "bildirim_aktif":ayar("bildirim_aktif","0"),
                 "saat_dilimi_offset":ayar("saat_dilimi_offset","3"),
                 "kilit_gorsel":ayar("kilit_gorsel",""),
+                "kilit_gorsel_genislik":ayar("kilit_gorsel_genislik","120"),
+                "kilit_gorsel_sekil":ayar("kilit_gorsel_sekil","kare"),
                 "header_aktif":ayar("header_aktif","1"),
                 "header_bg_renk":ayar("header_bg_renk",""),
                 "header_yazi_renk":ayar("header_yazi_renk",""),
@@ -1398,6 +1409,7 @@ def admin_ayarlar():
                 "header_anasayfa_aktif":ayar("header_anasayfa_aktif","1"),
                 "header_yukseklik":ayar("header_yukseklik","60"),
                 "gorus_anasayfa_url":ayar("gorus_anasayfa_url","/"),
+                "gorus_anasayfa_url_tip":ayar("gorus_anasayfa_url_tip","ic"),
                 "gorus_buton_metin":ayar("gorus_buton_metin","💬 Görüş, Dilek & Şikayet"),
                 "gorus_anasayfa_buton":ayar("gorus_anasayfa_buton","1"),
                 "gorus_geri_buton":ayar("gorus_geri_buton","1"),
@@ -1405,7 +1417,8 @@ def admin_ayarlar():
                 "anket_anasayfa_buton":ayar("anket_anasayfa_buton","1"),
                 "anket_geri_buton":ayar("anket_geri_buton","0"),
                 "anket_anasayfa_metin":ayar("anket_anasayfa_metin","Ana Sayfaya Dön"),
-                "anket_anasayfa_url":ayar("anket_anasayfa_url","/")})
+                "anket_anasayfa_url":ayar("anket_anasayfa_url","/"),
+                "anket_anasayfa_url_tip":ayar("anket_anasayfa_url_tip","ic")})
 
     return render_template("admin_ayarlar.html",**ctx)
 

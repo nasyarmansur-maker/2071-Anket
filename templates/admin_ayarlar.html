@@ -299,13 +299,28 @@
     </p>
     {% if kilit_gorsel %}
     <div style="margin-bottom:1rem">
-      <img src="{{ kilit_gorsel }}" style="max-width:200px;max-height:150px;border-radius:var(--r);border:1px solid var(--kenar);object-fit:contain;display:block">
+      {% set _brd = 'border-radius:50%' if kilit_gorsel_sekil=='yuvarlak' else ('border-radius:var(--r)' if kilit_gorsel_sekil=='yukesik' else 'border-radius:0') %}
+      <img src="{{ kilit_gorsel }}" style="width:{{ kilit_gorsel_genislik }}px;max-width:200px;height:auto;{{ _brd }};border:1px solid var(--kenar);object-fit:contain;display:block">
       <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:6px">
         <input type="checkbox" name="kilit_gorsel_sil"> 🗑 Görseli kaldır
       </label>
     </div>
     {% endif %}
     <input type="file" name="kilit_gorsel" accept="image/*" style="font-size:13px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+      <div>
+        <label class="alan-lbl">Genişlik (px)</label>
+        <input type="number" name="kilit_gorsel_genislik" value="{{ kilit_gorsel_genislik if kilit_gorsel_genislik else '120' }}" min="40" max="400" style="width:90px">
+      </div>
+      <div>
+        <label class="alan-lbl">Şekil</label>
+        <select name="kilit_gorsel_sekil" style="width:130px">
+          <option value="kare" {% if kilit_gorsel_sekil=='kare' or not kilit_gorsel_sekil %}selected{% endif %}>Kare (köşesiz)</option>
+          <option value="yukesik" {% if kilit_gorsel_sekil=='yukesik' %}selected{% endif %}>Yuvarlatılmış köşe</option>
+          <option value="yuvarlak" {% if kilit_gorsel_sekil=='yuvarlak' %}selected{% endif %}>Daire</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- Tam Veri Yedekleme -->
@@ -387,9 +402,26 @@
         <input type="text" name="anket_anasayfa_metin" value="{{ anket_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
       </div>
       <div>
-        <label class="alan-lbl">Yönlendirme URL</label>
+        <label class="alan-lbl">Yönlendirme Türü</label>
+        <select name="anket_anasayfa_url_tip" style="width:180px">
+          <option value="ic" {% if anket_anasayfa_url_tip=='ic' or not anket_anasayfa_url_tip %}selected{% endif %}>Uygulama içi (aynı sekme)</option>
+          <option value="dis" {% if anket_anasayfa_url_tip=='dis' %}selected{% endif %}>Dış URL (yeni sekme)</option>
+        </select>
+      </div>
+      <div>
+        <label class="alan-lbl">Yönlendirme Türü</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:5px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="anket_anasayfa_url_tip" value="ic"
+              {% if anket_anasayfa_url_tip != 'dis' %}checked{% endif %}> 🏠 Uygulama içi
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="anket_anasayfa_url_tip" value="dis"
+              {% if anket_anasayfa_url_tip == 'dis' %}checked{% endif %}> 🌐 Farklı URL
+          </label>
+        </div>
         <input type="text" name="anket_anasayfa_url" value="{{ anket_anasayfa_url }}" placeholder="/" style="width:180px">
-        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Boş bırakılırsa anasayfaya yönlendirir.</div>
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">İç: <code>/</code> · Dış: tam URL (https://...)</div>
       </div>
     </div>
   </div>
@@ -415,9 +447,26 @@
         <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
       </div>
       <div>
-        <label class="alan-lbl">Yönlendirme URL</label>
+        <label class="alan-lbl">Yönlendirme Türü</label>
+        <select name="gorus_anasayfa_url_tip" style="width:180px">
+          <option value="ic" {% if gorus_anasayfa_url_tip=='ic' or not gorus_anasayfa_url_tip %}selected{% endif %}>Uygulama içi (aynı sekme)</option>
+          <option value="dis" {% if gorus_anasayfa_url_tip=='dis' %}selected{% endif %}>Dış URL (yeni sekme)</option>
+        </select>
+      </div>
+      <div>
+        <label class="alan-lbl">Yönlendirme Türü</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:5px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="gorus_anasayfa_url_tip" value="ic"
+              {% if gorus_anasayfa_url_tip != 'dis' %}checked{% endif %}> 🏠 Uygulama içi
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <input type="radio" name="gorus_anasayfa_url_tip" value="dis"
+              {% if gorus_anasayfa_url_tip == 'dis' %}checked{% endif %}> 🌐 Farklı URL
+          </label>
+        </div>
         <input type="text" name="gorus_anasayfa_url" value="{{ gorus_anasayfa_url }}" placeholder="/" style="width:180px">
-        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Boş bırakılırsa anasayfaya yönlendirir.</div>
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">İç: <code>/</code> · Dış: tam URL (https://...)</div>
       </div>
     </div>
   </div>
@@ -547,7 +596,15 @@ document.querySelectorAll('input[type=radio]').forEach(function(inp) {
   inp.addEventListener('change', function() { radioKartGuncelle(this); });
 });
 
-/* Tema daireleri için özel: tıklayınca kenarlık ekle */
+/* Tema daireleri için özel: tıklayınca kenarlık ekle ve sayfada anında uygula */
+var temaRenkler = {
+  'mavi':    '#185FA5',
+  'yesil':   '#2d7a2d',
+  'kirmizi': '#c0392b',
+  'mor':     '#6c3483',
+  'turkuaz': '#0f7173',
+  'turuncu': '#d35400'
+};
 document.querySelectorAll('.tema-top').forEach(function(div) {
   div.addEventListener('click', function() {
     document.querySelectorAll('.tema-top').forEach(function(d) {
@@ -555,6 +612,11 @@ document.querySelectorAll('.tema-top').forEach(function(div) {
     });
     div.style.outline = '3px solid var(--metin)';
     div.style.outlineOffset = '2px';
+    /* Sayfaya anında uygula */
+    var inp = div.querySelector('input[type=radio]');
+    if (inp) {
+      document.documentElement.setAttribute('data-tema', inp.value);
+    }
   });
   /* Sayfa açılınca zaten seçili olanı göster */
   var inp = div.querySelector('input[type=radio]');

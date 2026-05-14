@@ -106,9 +106,29 @@
           <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön">
         </div>
         <div>
-          <label class="alan-lbl">Yönlendirme URL</label>
-          <input type="text" name="gorus_anasayfa_url" value="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" placeholder="/">
-          <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Boş bırakılırsa anasayfaya yönlendirir.</div>
+          <label class="alan-lbl">Yönlendirme Türü</label>
+          <select name="gorus_anasayfa_url_tip" style="width:100%">
+            <option value="ic" {% if gorus_anasayfa_url_tip=='ic' or not gorus_anasayfa_url_tip %}selected{% endif %}>Uygulama içi sayfa (aynı sekmede)</option>
+            <option value="dis" {% if gorus_anasayfa_url_tip=='dis' %}selected{% endif %}>Farklı / dış URL (yeni sekmede)</option>
+          </select>
+        </div>
+        <div>
+          <label class="alan-lbl">Yönlendirme Türü</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+              <input type="radio" name="gorus_anasayfa_url_tip" value="ic"
+                {% if gorus_anasayfa_url_tip != 'dis' %}checked{% endif %}> 🏠 Uygulama içi sayfa
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+              <input type="radio" name="gorus_anasayfa_url_tip" value="dis"
+                {% if gorus_anasayfa_url_tip == 'dis' %}checked{% endif %}> 🌐 Farklı URL
+            </label>
+          </div>
+          <input type="text" name="gorus_anasayfa_url" value="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" placeholder="/"
+                 id="gorus_anasayfa_url_inp">
+          <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">
+            İç sayfa: <code>/</code> veya <code>/gorus</code> gibi. Dış URL: <code>https://okul.gov.tr</code> gibi tam adres.
+          </div>
         </div>
         <div>
           <label class="alan-lbl">Seçili Kategori Rengi</label>
@@ -146,6 +166,30 @@
         <label>Kart Rengi</label>
         <input type="color" class="renk-inp" name="gorus_kart_renk"
                value="{{ gorus_kart_renk if gorus_kart_renk else '#ffffff' }}">
+      </div>
+      <div class="alan-sira">
+        <label>Kart Şeffaflığı <span style="font-size:11px;color:var(--metin-uc)" id="saydam_lbl">{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}%</span></label>
+        <input type="range" name="gorus_kart_saydam" min="0" max="100"
+               value="{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}"
+               style="width:130px;accent-color:var(--ana)"
+               oninput="document.getElementById('saydam_lbl').textContent=this.value+'%'">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:2px">0% = tam şeffaf · 100% = opak</div>
+      </div>
+      <div class="alan-sira">
+        <label>Kart Şeffaflığı <span style="font-size:11px;color:var(--metin-uc)" id="saydam_lbl">{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}%</span></label>
+        <input type="range" name="gorus_kart_saydam" min="0" max="100"
+               value="{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}"
+               style="width:120px;accent-color:var(--ana)"
+               oninput="document.getElementById('saydam_lbl').textContent=this.value+'%'">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:2px">0% = tam şeffaf, 100% = opak</div>
+      </div>
+      <div class="alan-sira">
+        <label>Kart Şeffaflığı <span id="saydam_deger" style="color:var(--ana);font-weight:700">%{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}</span></label>
+        <input type="range" name="gorus_kart_saydam" min="0" max="100"
+               value="{{ gorus_kart_saydam if gorus_kart_saydam else '93' }}"
+               oninput="document.getElementById('saydam_deger').textContent='%'+this.value"
+               style="width:100%;accent-color:var(--ana)">
+        <div style="font-size:11px;color:var(--metin-uc);margin-top:2px">0 = tam şeffaf · 100 = tam opak. Arka plan görseli varken etkilidir.</div>
       </div>
       <div class="alan-sira">
         <label>Logo / Üst Görsel</label>

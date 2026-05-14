@@ -9,7 +9,9 @@
   </p>
   <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
     {% if anket_anasayfa_buton=='1' %}
-    <a href="{{ anket_anasayfa_url if anket_anasayfa_url else '/' }}" class="btn btn-ana">
+    <a href="{{ anket_anasayfa_url if anket_anasayfa_url else '/' }}"
+       {% if anket_anasayfa_url_tip=='dis' %}target="_blank" rel="noopener"{% endif %}
+       class="btn btn-ana">
       ← {{ anket_anasayfa_metin if anket_anasayfa_metin else 'Ana Sayfaya Dön' }}
     </a>
     {% endif %}

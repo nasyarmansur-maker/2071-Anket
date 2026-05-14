@@ -9,7 +9,9 @@
   </p>
   <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
     {% if gorus_anasayfa_buton=='1' %}
-    <a href="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" class="btn btn-ana" style="padding:12px 28px;font-size:15px">
+    <a href="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}"
+       {% if gorus_anasayfa_url_tip=='dis' %}target="_blank" rel="noopener"{% endif %}
+       class="btn btn-ana" style="padding:12px 28px;font-size:15px">
       ← {{ gorus_anasayfa_metin if gorus_anasayfa_metin else 'Ana Sayfaya Dön' }}
     </a>
     {% endif %}

@@ -36,8 +36,14 @@
   background-position:center !important;
   background-repeat:no-repeat !important;
 }
-.gorus-kap{background:rgba(255,255,255,.93);border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}
+{% set saydam = (gorus_kart_saydam if gorus_kart_saydam else '93')|int %}
+{% set kart_bg = gorus_kart_renk if gorus_kart_renk else '#ffffff' %}
+.gorus-kap{background:{{ kart_bg }}{{ '%02x' % ((saydam * 255 // 100)) }};border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}
 </style>
+{% else %}
+{% set saydam = (gorus_kart_saydam if gorus_kart_saydam else '93')|int %}
+{% set kart_bg = gorus_kart_renk if gorus_kart_renk else '#ffffff' %}
+<style>.gorus-kap{background:{{ kart_bg }}{{ '%02x' % ((saydam * 255 // 100)) }};border-radius:var(--r-lg);padding:1.5rem;margin:1rem auto}</style>
 {% endif %}
 {% endblock %}
 {% block icerik %}
@@ -97,7 +103,10 @@
         ✉️ Gönder
       </button>
       {% if gorus_anasayfa_buton=='1' %}
-      <a href="{{ gorus_anasayfa_url if gorus_anasayfa_url else '/' }}" class="btn btn-gri btn-tam" style="padding:13px;font-size:15px;margin-top:8px;display:block;text-align:center">
+      {% set _url = gorus_anasayfa_url if gorus_anasayfa_url else '/' %}
+      <a href="{{ _url }}"
+         {% if gorus_anasayfa_url_tip=='dis' %}target="_blank" rel="noopener"{% endif %}
+         class="btn btn-gri btn-tam" style="padding:13px;font-size:15px;margin-top:8px;display:block;text-align:center">
         ← {{ gorus_anasayfa_metin }}
       </a>
       {% endif %}
