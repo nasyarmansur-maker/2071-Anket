@@ -401,27 +401,33 @@
         <label class="alan-lbl">Buton Yazısı</label>
         <input type="text" name="anket_anasayfa_metin" value="{{ anket_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
       </div>
-      <div>
-        <label class="alan-lbl">Yönlendirme Türü</label>
-        <select name="anket_anasayfa_url_tip" style="width:180px">
-          <option value="ic" {% if anket_anasayfa_url_tip=='ic' or not anket_anasayfa_url_tip %}selected{% endif %}>Uygulama içi (aynı sekme)</option>
-          <option value="dis" {% if anket_anasayfa_url_tip=='dis' %}selected{% endif %}>Dış URL (yeni sekme)</option>
-        </select>
-      </div>
-      <div>
-        <label class="alan-lbl">Yönlendirme Türü</label>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:5px">
+      <div style="grid-column:1/-1">
+        <label class="alan-lbl">Yönlendirme</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:7px">
           <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
             <input type="radio" name="anket_anasayfa_url_tip" value="ic"
-              {% if anket_anasayfa_url_tip != 'dis' %}checked{% endif %}> 🏠 Uygulama içi
+              {% if anket_anasayfa_url_tip != 'dis' %}checked{% endif %}
+              onchange="urlTipDegis('anket','ic')"> 🏠 Uygulama içi sayfa
           </label>
           <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
             <input type="radio" name="anket_anasayfa_url_tip" value="dis"
-              {% if anket_anasayfa_url_tip == 'dis' %}checked{% endif %}> 🌐 Farklı URL
+              {% if anket_anasayfa_url_tip == 'dis' %}checked{% endif %}
+              onchange="urlTipDegis('anket','dis')"> 🌐 Farklı URL
           </label>
         </div>
-        <input type="text" name="anket_anasayfa_url" value="{{ anket_anasayfa_url }}" placeholder="/" style="width:180px">
-        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">İç: <code>/</code> · Dış: tam URL (https://...)</div>
+        <div id="anket_url_ic" {% if anket_anasayfa_url_tip == 'dis' %}style="display:none"{% endif %}>
+          <select name="anket_anasayfa_url" style="width:220px">
+            {% set _acur = anket_anasayfa_url if anket_anasayfa_url else '/' %}
+            <option value="/" {% if _acur=='/' %}selected{% endif %}>🏠 Ana Sayfa (/)</option>
+            <option value="/gorus" {% if _acur=='/gorus' %}selected{% endif %}>💬 Görüş Formu (/gorus)</option>
+          </select>
+        </div>
+        <div id="anket_url_dis" {% if anket_anasayfa_url_tip != 'dis' %}style="display:none"{% endif %}>
+          <input type="text" name="anket_anasayfa_url_dis"
+                 value="{{ anket_anasayfa_url if anket_anasayfa_url_tip=='dis' else '' }}"
+                 placeholder="https://okul.meb.gov.tr" style="width:220px">
+          <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Tam adres (https:// ile başlamalı)</div>
+        </div>
       </div>
     </div>
   </div>
@@ -446,27 +452,33 @@
         <label class="alan-lbl">Buton Yazısı</label>
         <input type="text" name="gorus_anasayfa_metin" value="{{ gorus_anasayfa_metin }}" placeholder="Ana Sayfaya Dön" style="width:180px">
       </div>
-      <div>
-        <label class="alan-lbl">Yönlendirme Türü</label>
-        <select name="gorus_anasayfa_url_tip" style="width:180px">
-          <option value="ic" {% if gorus_anasayfa_url_tip=='ic' or not gorus_anasayfa_url_tip %}selected{% endif %}>Uygulama içi (aynı sekme)</option>
-          <option value="dis" {% if gorus_anasayfa_url_tip=='dis' %}selected{% endif %}>Dış URL (yeni sekme)</option>
-        </select>
-      </div>
-      <div>
-        <label class="alan-lbl">Yönlendirme Türü</label>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:5px">
+      <div style="grid-column:1/-1">
+        <label class="alan-lbl">Yönlendirme</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:7px">
           <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
             <input type="radio" name="gorus_anasayfa_url_tip" value="ic"
-              {% if gorus_anasayfa_url_tip != 'dis' %}checked{% endif %}> 🏠 Uygulama içi
+              {% if gorus_anasayfa_url_tip != 'dis' %}checked{% endif %}
+              onchange="urlTipDegis('gorus','ic')"> 🏠 Uygulama içi sayfa
           </label>
           <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
             <input type="radio" name="gorus_anasayfa_url_tip" value="dis"
-              {% if gorus_anasayfa_url_tip == 'dis' %}checked{% endif %}> 🌐 Farklı URL
+              {% if gorus_anasayfa_url_tip == 'dis' %}checked{% endif %}
+              onchange="urlTipDegis('gorus','dis')"> 🌐 Farklı URL
           </label>
         </div>
-        <input type="text" name="gorus_anasayfa_url" value="{{ gorus_anasayfa_url }}" placeholder="/" style="width:180px">
-        <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">İç: <code>/</code> · Dış: tam URL (https://...)</div>
+        <div id="gorus_url_ic2" {% if gorus_anasayfa_url_tip == 'dis' %}style="display:none"{% endif %}>
+          <select name="gorus_anasayfa_url" style="width:220px">
+            {% set _gcur = gorus_anasayfa_url if gorus_anasayfa_url else '/' %}
+            <option value="/" {% if _gcur=='/' %}selected{% endif %}>🏠 Ana Sayfa (/)</option>
+            <option value="/gorus" {% if _gcur=='/gorus' %}selected{% endif %}>💬 Görüş Formu (/gorus)</option>
+          </select>
+        </div>
+        <div id="gorus_url_dis2" {% if gorus_anasayfa_url_tip != 'dis' %}style="display:none"{% endif %}>
+          <input type="text" name="gorus_anasayfa_url_dis"
+                 value="{{ gorus_anasayfa_url if gorus_anasayfa_url_tip=='dis' else '' }}"
+                 placeholder="https://okul.meb.gov.tr" style="width:220px">
+          <div style="font-size:11px;color:var(--metin-uc);margin-top:3px">Tam adres (https:// ile başlamalı)</div>
+        </div>
       </div>
     </div>
   </div>
@@ -616,6 +628,15 @@ document.querySelectorAll('.tema-top').forEach(function(div) {
     var inp = div.querySelector('input[type=radio]');
     if (inp) {
       document.documentElement.setAttribute('data-tema', inp.value);
+      /* Header arka planı da güncelle (header_bg_renk inline stilini geç) */
+      var headerBgInp = document.querySelector('input[name="header_bg_renk"]');
+      var hdr = document.querySelector('.site-header');
+      if (hdr && temaRenkler[inp.value]) {
+        /* Sadece özel renk girilmemişse (boş ya da varsayılan) temayı yansıt */
+        if (!headerBgInp || !headerBgInp.value || headerBgInp.value === '') {
+          hdr.style.background = temaRenkler[inp.value];
+        }
+      }
     }
   });
   /* Sayfa açılınca zaten seçili olanı göster */
@@ -625,5 +646,42 @@ document.querySelectorAll('.tema-top').forEach(function(div) {
     div.style.outlineOffset = '2px';
   }
 });
+
+/* URL yönlendirme tipi toggle */
+function urlTipDegis(prefix, tip) {
+  var icId  = prefix + '_url_ic' + (prefix === 'gorus' ? '2' : '');
+  var disId = prefix + '_url_dis' + (prefix === 'gorus' ? '2' : '');
+  var icEl  = document.getElementById(icId);
+  var disEl = document.getElementById(disId);
+  if (icEl)  icEl.style.display  = tip === 'ic'  ? '' : 'none';
+  if (disEl) disEl.style.display = tip === 'dis' ? '' : 'none';
+}
+
+/* Form submit: dış URL alanını gizli input olarak ekle */
+(function() {
+  var form = document.querySelector('form');
+  if (!form) return;
+  form.addEventListener('submit', function() {
+    ['anket','gorus'].forEach(function(prefix) {
+      var tipEl = document.querySelector('input[name="' + prefix + '_anasayfa_url_tip"]:checked');
+      if (!tipEl) return;
+      if (tipEl.value === 'dis') {
+        var disInp = document.querySelector('input[name="' + prefix + '_anasayfa_url_dis"]');
+        var sel    = document.querySelector('select[name="' + prefix + '_anasayfa_url"]');
+        if (sel) sel.disabled = true;
+        if (disInp) {
+          var h = document.createElement('input');
+          h.type = 'hidden'; h.name = prefix + '_anasayfa_url';
+          h.value = disInp.value.trim();
+          form.appendChild(h);
+          disInp.disabled = true;
+        }
+      } else {
+        var disInp2 = document.querySelector('input[name="' + prefix + '_anasayfa_url_dis"]');
+        if (disInp2) disInp2.disabled = true;
+      }
+    });
+  });
+})();
 </script>
 {% endblock %}
