@@ -3,81 +3,75 @@
 {% block baslik %}Görüş & Dilekler{% endblock %}
 {% block ekstra_css %}
 <style>
-/* ── İstatistik kartları ── */
-.istat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1.25rem}
-.istat-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:.875rem 1rem;text-align:center}
-.istat-kart .istat-n{font-size:28px;font-weight:800;line-height:1;margin-bottom:4px}
-.istat-kart .istat-lbl{font-size:11px;color:var(--metin-uc);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.istat-kart.vurgu{background:var(--ana);color:#fff}
-.istat-kart.vurgu .istat-lbl{color:rgba(255,255,255,.8)}
-.istat-kart.kirmizi{background:var(--kirmizi);color:#fff}
-.istat-kart.kirmizi .istat-lbl{color:rgba(255,255,255,.8)}
-/* ── Filtre bar ── */
-.filtre-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
-.filtre-btn{display:flex;align-items:center;gap:6px;background:var(--yuzey);border:1.5px solid var(--kenar);border-radius:var(--r-lg);padding:.45rem .875rem;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;color:var(--metin);transition:all .12s;white-space:nowrap}
-.filtre-btn:hover{border-color:var(--ana);color:var(--ana)}
-.filtre-btn.aktif{background:var(--ana);border-color:var(--ana);color:#fff}
-.filtre-btn.aktif .fn{background:rgba(255,255,255,.3);color:#fff}
-.fn{background:var(--ana);color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;min-width:18px;text-align:center}
-/* ── Arama kutusu ── */
-.arama-kap{position:relative;flex:1;min-width:200px;max-width:300px}
-.arama-kap input{width:100%;padding:.45rem .75rem .45rem 2rem;border:1.5px solid var(--kenar);border-radius:var(--r-lg);font-size:13px;background:var(--yuzey);color:var(--metin);outline:none;box-sizing:border-box}
+.g-istat{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem}
+.g-istat-kart{flex:1;min-width:100px;background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .12s}
+.g-istat-kart:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.g-istat-kart .n{font-size:26px;font-weight:800;line-height:1;margin-bottom:3px}
+.g-istat-kart .l{font-size:10px;color:var(--metin-uc);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.g-istat-kart.vurgu{background:var(--ana);color:#fff}.g-istat-kart.vurgu .l{color:rgba(255,255,255,.75)}
+.g-istat-kart.kirmizi{background:var(--kirmizi);color:#fff}.g-istat-kart.kirmizi .l{color:rgba(255,255,255,.75)}
+.sekme-bar{display:flex;gap:0;border-bottom:2px solid var(--kenar);margin-bottom:1rem}
+.sekme{padding:.6rem 1.1rem;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--metin-ik);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .12s;display:flex;align-items:center;gap:6px}
+.sekme:hover{color:var(--ana)}
+.sekme.aktif{color:var(--ana);border-bottom-color:var(--ana)}
+.sekme.ks.aktif{color:var(--kirmizi);border-bottom-color:var(--kirmizi)}
+.sek-badge{border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;color:#fff}
+.arac-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1rem;padding:.75rem;background:var(--gri-ac);border-radius:var(--r-lg)}
+.arama-kap{position:relative;flex:1;min-width:180px;max-width:280px}
+.arama-kap input{width:100%;padding:.42rem .75rem .42rem 2rem;border:1.5px solid var(--kenar);border-radius:var(--r-lg);font-size:13px;background:var(--yuzey);color:var(--metin);outline:none;box-sizing:border-box}
 .arama-kap input:focus{border-color:var(--ana)}
-.arama-kap .arama-ikon{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);font-size:13px;opacity:.5;pointer-events:none}
-/* ── Liste / Grid toggle ── */
-.gorunum-toggle{display:flex;gap:4px;background:var(--gri-ac);border-radius:var(--r);padding:3px}
-.gorunum-btn{padding:5px 10px;border-radius:calc(var(--r) - 2px);font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--metin-ik);transition:all .12s}
-.gorunum-btn.aktif{background:var(--yuzey);color:var(--metin);box-shadow:0 1px 4px rgba(0,0,0,.08)}
-/* ── Görüş kartı ── */
-.gorus-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1rem 1.125rem;margin-bottom:8px;transition:box-shadow .12s;position:relative}
-.gorus-kart:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
-.gorus-kart.okunmamis{border-left:3px solid var(--ana)}
-.gorus-ust{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-.tur-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.arama-kap .si{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);font-size:13px;opacity:.45;pointer-events:none}
+.filtre-sec{padding:.42rem .65rem;border:1.5px solid var(--kenar);border-radius:var(--r-lg);font-size:12px;background:var(--yuzey);color:var(--metin);outline:none;cursor:pointer}
+.gorunum-toggle{display:flex;gap:3px;background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r);padding:3px}
+.g-btn{padding:4px 10px;border-radius:calc(var(--r) - 2px);font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--metin-ik)}
+.g-btn.aktif{background:var(--ana);color:#fff}
+.gk{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1rem 1.125rem;margin-bottom:8px;transition:box-shadow .12s;position:relative}
+.gk:hover{box-shadow:0 2px 12px rgba(0,0,0,.1)}
+.gk.okunmamis{border-left:3px solid var(--ana);background:var(--ana-ac)}
+.gk-ust{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.tur-b{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap}
 .tur-dilek{background:#fef9e7;color:#c8920a;border:1px solid #f5e298}
 .tur-gorus{background:var(--ana-ac);color:var(--ana);border:1px solid var(--ana-orta)}
-.tur-sikayet{background:var(--kirmizi-ac);color:var(--kirmizi);border:1px solid #f5b8b8}
+.tur-sikayet{background:#fde8e8;color:var(--kirmizi);border:1px solid #f5b8b8}
 .tur-tebrik{background:var(--yesil-ac);color:var(--yesil);border:1px solid #b5d89a}
-.gorus-meta{font-size:11px;color:var(--metin-uc)}
-.okunmamis-badge{background:var(--ana);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700}
-.gorus-icerik{font-size:14px;color:var(--metin);line-height:1.65;background:var(--gri-ac);border-radius:var(--r);padding:10px 14px;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;max-height:200px;overflow:hidden;transition:max-height .3s}
-.gorus-icerik.genislet{max-height:none}
-.devami{font-size:11px;color:var(--ana);cursor:pointer;text-align:right;margin-bottom:8px;font-weight:600}
-.gorus-aksiyonlar{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
-/* ── Grid görünüm ── */
-.gorus-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
-.gorus-grid .gorus-kart{margin-bottom:0}
-/* ── Toplu işlem bar ── */
-.toplu-bar{position:sticky;top:0;z-index:10;background:var(--ana);color:#fff;border-radius:var(--r-lg);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,.15);display:none}
-.toplu-bar.goster{display:flex}
-/* ── Boş durum ── */
-.bos-durum{text-align:center;padding:4rem 2rem;color:var(--metin-uc)}
-/* ── Sayfalama ── */
-.sayfa-bar{display:flex;gap:6px;justify-content:center;margin-top:1.25rem;flex-wrap:wrap}
-.sayfa-btn{padding:6px 12px;border:1.5px solid var(--kenar);border-radius:var(--r);font-size:13px;cursor:pointer;text-decoration:none;color:var(--metin);background:var(--yuzey);font-weight:500;transition:all .12s}
-.sayfa-btn:hover,.sayfa-btn.aktif{background:var(--ana);border-color:var(--ana);color:#fff}
+.meta{font-size:11px;color:var(--metin-uc)}
+.yeni-b{background:var(--ana);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700}
+.gk-icerik{font-size:14px;line-height:1.65;background:var(--gri-ac);border-radius:var(--r);padding:10px 14px;white-space:pre-wrap;word-break:break-word;margin-bottom:8px;max-height:120px;overflow:hidden;transition:max-height .3s;position:relative}
+.gk-icerik.genislet{max-height:1000px}
+.gk-icerik:not(.genislet)::after{content:'';position:absolute;bottom:0;left:0;right:0;height:32px;background:linear-gradient(transparent,var(--gri-ac));border-radius:0 0 var(--r) var(--r);pointer-events:none}
+.devami{font-size:11px;color:var(--ana);cursor:pointer;text-align:right;margin-bottom:6px;font-weight:600}
+.admin-not-b{background:#fff8e1;border:1px solid #ffe082;border-radius:var(--r);padding:7px 10px;font-size:12px;color:#7a5c00;margin-bottom:8px}
+.admin-not-b strong{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;opacity:.7}
+.aksiyonlar{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.goster{display:flex}
+.modal{background:var(--yuzey);border-radius:var(--r-lg);width:100%;max-width:580px;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-bas{display:flex;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid var(--kenar);gap:10px}
+.modal-bas h3{margin:0;font-size:16px;flex:1}
+.modal-kapat{background:none;border:none;font-size:20px;cursor:pointer;color:var(--metin-ik);padding:0 4px}
+.modal-govde{padding:1.25rem}
+.not-form textarea{width:100%;min-height:70px;padding:8px;border:1.5px solid var(--kenar);border-radius:var(--r);font-size:13px;background:var(--yuzey);color:var(--metin);resize:vertical;outline:none;box-sizing:border-box}
+.not-form textarea:focus{border-color:var(--ana)}
+.bos{text-align:center;padding:3.5rem 2rem;color:var(--metin-uc)}
 </style>
 {% endblock %}
 {% block admin_icerik %}
+{% set tm = (sayilar.get('dilek',0)+sayilar.get('gorus',0)+sayilar.get('sikayet',0)+sayilar.get('tebrik',0)) %}
 
-{% set toplam_gorusler = (sayilar.get('dilek',0) + sayilar.get('gorus',0) + sayilar.get('sikayet',0) + sayilar.get('tebrik',0)) %}
-
-<!-- Başlık -->
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap">
+<!-- Başlık + Eylemler -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
   <div class="sayfa-baslik" style="margin:0">💬 Görüş & Dilekler</div>
   {% if okunmamis > 0 %}
-  <span style="background:var(--kirmizi);color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">
-    {{ okunmamis }} okunmamış
-  </span>
+  <span style="background:var(--kirmizi);color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">{{ okunmamis }} okunmamış</span>
   {% endif %}
   <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-    {% if liste %}
-    <form method="POST" action="/admin/gorusler/tumunu_okundu" style="display:inline">
+    <a href="/admin/gorusler/excel{% if filtre_tur %}?tur={{ filtre_tur }}{% endif %}{% if filtre_okundu %}{{'&' if filtre_tur else '?'}}okundu={{ filtre_okundu }}{% endif %}"
+       class="btn btn-yesil btn-kucuk">⬇ Excel/CSV</a>
+    {% if liste %}<form method="POST" action="/admin/gorusler/tumunu_okundu" style="display:inline">
       <button type="submit" class="btn btn-gri btn-kucuk">✓ Tümünü Okundu</button>
-    </form>
-    {% endif %}
+    </form>{% endif %}
     <form method="POST" action="/admin/gorusler/tumunu_sil"
-          onsubmit="return confirm('{% if filtre_tur %}Bu kategorideki tüm görüşler{% else %}Tüm görüşler{% endif %} silinecek. Emin misiniz?')"
+          onsubmit="return confirm('{% if filtre_tur %}Bu kategorideki{% else %}Tüm{% endif %} görüşler silinecek?')"
           style="display:inline">
       {% if filtre_tur %}<input type="hidden" name="tur" value="{{ filtre_tur }}">{% endif %}
       <button type="submit" class="btn btn-tehlike btn-kucuk">🗑 {% if filtre_tur %}Kategoriyi{% else %}Tümünü{% endif %} Sil</button>
@@ -85,189 +79,213 @@
   </div>
 </div>
 
-<!-- İstatistik Kartları -->
-<div class="istat-grid">
-  <div class="istat-kart vurgu">
-    <div class="istat-n">{{ toplam_gorusler }}</div>
-    <div class="istat-lbl">Toplam</div>
-  </div>
-  <div class="istat-kart {% if okunmamis > 0 %}kirmizi{% endif %}">
-    <div class="istat-n">{{ okunmamis }}</div>
-    <div class="istat-lbl">Okunmamış</div>
-  </div>
-  <div class="istat-kart">
-    <div class="istat-n">{{ sayilar.get('sikayet',0) }}</div>
-    <div class="istat-lbl">⚠️ Şikayet</div>
-  </div>
-  <div class="istat-kart">
-    <div class="istat-n">{{ sayilar.get('dilek',0) }}</div>
-    <div class="istat-lbl">🌟 Dilek</div>
-  </div>
-  <div class="istat-kart">
-    <div class="istat-n">{{ sayilar.get('gorus',0) }}</div>
-    <div class="istat-lbl">💬 Görüş</div>
-  </div>
-  <div class="istat-kart">
-    <div class="istat-n">{{ sayilar.get('tebrik',0) }}</div>
-    <div class="istat-lbl">👏 Tebrik</div>
-  </div>
+<!-- İstatistik -->
+<div class="g-istat">
+  <a href="/admin/gorusler" class="g-istat-kart vurgu"><div class="n">{{ tm }}</div><div class="l">Toplam</div></a>
+  <a href="/admin/gorusler?okundu=0" class="g-istat-kart {% if okunmamis>0 %}kirmizi{% endif %}"><div class="n">{{ okunmamis }}</div><div class="l">🔵 Okunmamış</div></a>
+  <a href="/admin/gorusler?tur=sikayet" class="g-istat-kart"><div class="n">{{ sayilar.get('sikayet',0) }}</div><div class="l">⚠️ Şikayet</div></a>
+  <a href="/admin/gorusler?tur=dilek" class="g-istat-kart"><div class="n">{{ sayilar.get('dilek',0) }}</div><div class="l">🌟 Dilek</div></a>
+  <a href="/admin/gorusler?tur=gorus" class="g-istat-kart"><div class="n">{{ sayilar.get('gorus',0) }}</div><div class="l">💬 Görüş</div></a>
+  <a href="/admin/gorusler?tur=tebrik" class="g-istat-kart"><div class="n">{{ sayilar.get('tebrik',0) }}</div><div class="l">👏 Tebrik</div></a>
 </div>
 
-<!-- Filtre & Arama Bar -->
-<div class="filtre-bar">
-  <a href="/admin/gorusler" class="filtre-btn {% if not filtre_tur and not filtre_okundu %}aktif{% endif %}">
-    Tümü <span class="fn">{{ toplam_gorusler }}</span>
-  </a>
-  <a href="/admin/gorusler?tur=sikayet" class="filtre-btn {% if filtre_tur=='sikayet' %}aktif{% endif %}">
-    ⚠️ Şikayet <span class="fn">{{ sayilar.get('sikayet',0) }}</span>
-  </a>
-  <a href="/admin/gorusler?tur=dilek" class="filtre-btn {% if filtre_tur=='dilek' %}aktif{% endif %}">
-    🌟 Dilek <span class="fn">{{ sayilar.get('dilek',0) }}</span>
-  </a>
-  <a href="/admin/gorusler?tur=gorus" class="filtre-btn {% if filtre_tur=='gorus' %}aktif{% endif %}">
-    💬 Görüş <span class="fn">{{ sayilar.get('gorus',0) }}</span>
-  </a>
-  <a href="/admin/gorusler?tur=tebrik" class="filtre-btn {% if filtre_tur=='tebrik' %}aktif{% endif %}">
-    👏 Tebrik <span class="fn">{{ sayilar.get('tebrik',0) }}</span>
-  </a>
-  <a href="/admin/gorusler?okundu=0" class="filtre-btn {% if filtre_okundu=='0' %}aktif{% endif %}">
-    🔵 Okunmamış <span class="fn">{{ okunmamis }}</span>
-  </a>
-  <a href="/admin/gorusler?okundu=1" class="filtre-btn {% if filtre_okundu=='1' %}aktif{% endif %}">
-    ✓ Okunmuş
-  </a>
+<!-- Sekmeler -->
+<div class="sekme-bar">
+  <button class="sekme ks {% if filtre_okundu=='0' %}aktif{% endif %}" onclick="sekmeGit('0')">
+    🔵 Okunmamış <span class="sek-badge" style="background:var(--kirmizi)">{{ okunmamis }}</span>
+  </button>
+  <button class="sekme {% if filtre_okundu=='1' %}aktif{% endif %}" onclick="sekmeGit('1')">✓ Okunmuş</button>
+  <button class="sekme {% if not filtre_okundu %}aktif{% endif %}" onclick="sekmeGit('')">
+    📋 Tümü <span class="sek-badge" style="background:var(--metin-uc)">{{ tm }}</span>
+  </button>
+</div>
 
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-    <!-- Arama -->
-    <div class="arama-kap">
-      <span class="arama-ikon">🔍</span>
-      <input type="text" id="aramaInp" placeholder="Mesajlarda ara..."
-             value="{{ filtre_arama }}" oninput="aramaYap(this.value)">
-    </div>
-    <!-- Görünüm toggle -->
+<!-- Araç Çubuğu -->
+<div class="arac-bar">
+  <select class="filtre-sec" onchange="turFiltrele(this.value)">
+    <option value="" {% if not filtre_tur %}selected{% endif %}>📋 Tüm kategoriler</option>
+    <option value="sikayet" {% if filtre_tur=='sikayet' %}selected{% endif %}>⚠️ Şikayet</option>
+    <option value="dilek"   {% if filtre_tur=='dilek'   %}selected{% endif %}>🌟 Dilek</option>
+    <option value="gorus"   {% if filtre_tur=='gorus'   %}selected{% endif %}>💬 Görüş</option>
+    <option value="tebrik"  {% if filtre_tur=='tebrik'  %}selected{% endif %}>👏 Tebrik</option>
+  </select>
+  <select class="filtre-sec" id="siralamaEl" onchange="sirala(this.value)">
+    <option value="yeni">↓ En Yeni</option>
+    <option value="eski">↑ En Eski</option>
+    <option value="uzun">↓ En Uzun</option>
+  </select>
+  <div class="arama-kap">
+    <span class="si">🔍</span>
+    <input type="text" id="aramaInp" placeholder="Mesajlarda ara... (/)" value="{{ filtre_arama }}" oninput="aramaYap(this.value)">
+  </div>
+  <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+    <span style="font-size:12px;color:var(--metin-uc)" id="sonucSayi">{{ liste|length }} kayıt</span>
     <div class="gorunum-toggle">
-      <button class="gorunum-btn aktif" id="listBtn" onclick="gorunumSec('liste')">☰ Liste</button>
-      <button class="gorunum-btn" id="gridBtn" onclick="gorunumSec('grid')">⊞ Grid</button>
+      <button class="g-btn aktif" id="listBtn" onclick="gorunumSec('liste')" title="Liste">☰</button>
+      <button class="g-btn" id="gridBtn" onclick="gorunumSec('grid')" title="Grid">⊞</button>
     </div>
   </div>
 </div>
 
-<!-- Sonuç sayısı -->
-<div style="font-size:12px;color:var(--metin-uc);margin-bottom:.75rem" id="sonucSayi">
-  {{ liste|length }} sonuç gösteriliyor
-</div>
-
-<!-- Görüş listesi -->
+<!-- Görüş Listesi -->
 {% if liste %}
-<div id="gorusListesi" class="gorus-listesi">
+<div id="gorusListesi">
+{% set tur_map = {'dilek':'🌟 Dilek','gorus':'💬 Görüş','sikayet':'⚠️ Şikayet','tebrik':'👏 Tebrik'} %}
 {% for g in liste %}
-{% set tur_map = {'dilek':'🌟 Dilek & Temenni','gorus':'💬 Görüş & Öneri','sikayet':'⚠️ Şikayet','tebrik':'👏 Teşekkür'} %}
-<div class="gorus-kart {% if not g.okundu %}okunmamis{% endif %}" data-id="{{ g.id }}" data-icerik="{{ g.icerik|lower }}">
-  <div class="gorus-ust">
-    <span class="tur-badge tur-{{ g.tur }}">{{ tur_map.get(g.tur, g.tur) }}</span>
-    <span class="gorus-meta">📅 {{ g.tarih }} ⏰ {{ g.saat }}</span>
-    {% if not g.okundu %}
-    <span class="okunmamis-badge">● Yeni</span>
-    {% else %}
-    <span style="font-size:10px;color:var(--metin-uc)">✓ Okundu</span>
-    {% endif %}
-    <span class="gorus-meta" style="margin-left:auto;font-weight:600">#{{ g.id }}</span>
+<div class="gk {% if not g.okundu %}okunmamis{% endif %}"
+     data-id="{{ g.id }}" data-tur="{{ g.tur }}"
+     data-icerik="{{ g.icerik|lower|replace('"','') }}"
+     data-len="{{ g.icerik|length }}"
+     data-tarih="{{ g.tarih }} {{ g.saat }}">
+  <div class="gk-ust">
+    <span class="tur-b tur-{{ g.tur }}">{{ tur_map.get(g.tur, g.tur) }}</span>
+    <span class="meta">📅 {{ g.tarih }} · ⏰ {{ g.saat }}</span>
+    {% if not g.okundu %}<span class="yeni-b">● Yeni</span>
+    {% else %}<span style="font-size:10px;color:var(--metin-uc)">✓ Okundu</span>{% endif %}
+    <span class="meta" style="margin-left:auto;font-weight:600">#{{ g.id }}</span>
   </div>
-
-  <div class="gorus-icerik" id="icerik_{{ g.id }}">{{ g.icerik }}</div>
-  {% if g.icerik|length > 300 %}
+  <div class="gk-icerik" id="ic_{{ g.id }}">{{ g.icerik }}</div>
+  {% if g.icerik|length > 200 %}
   <div class="devami" onclick="genislet({{ g.id }})">▼ Devamını göster</div>
   {% endif %}
-
-  <div class="gorus-aksiyonlar">
+  {% if g.admin_not %}
+  <div class="admin-not-b"><strong>📌 Admin Notu</strong>{{ g.admin_not }}</div>
+  {% endif %}
+  <div class="aksiyonlar">
     {% if not g.okundu %}
     <form method="POST" action="/admin/gorus/{{ g.id }}/okundu" style="display:inline">
-      <button type="submit" class="btn btn-gri btn-kucuk">✓ Okundu İşaretle</button>
+      <button type="submit" class="btn btn-gri btn-kucuk">✓ Okundu</button>
     </form>
     {% endif %}
-    <button class="btn btn-gri btn-kucuk" onclick="kopyala({{ g.id }}, this)" title="Metni kopyala">📋 Kopyala</button>
+    <button class="btn btn-gri btn-kucuk" onclick="detayAc({{ g.id }})">📄 Detay & Not</button>
+    <button class="btn btn-gri btn-kucuk" onclick="kopyala({{ g.id }},this)">📋 Kopyala</button>
     <form method="POST" action="/admin/gorus/{{ g.id }}/sil" style="display:inline"
           onsubmit="return confirm('Bu görüşü silmek istediğinizden emin misiniz?')">
-      <button type="submit" class="btn btn-tehlike btn-kucuk">🗑 Sil</button>
+      <button type="submit" class="btn btn-tehlike btn-kucuk">🗑</button>
     </form>
   </div>
 </div>
 {% endfor %}
 </div>
 {% else %}
-<div class="bos-durum">
-  <div style="font-size:48px;opacity:.25;margin-bottom:14px">💬</div>
+<div class="bos">
+  <div style="font-size:48px;opacity:.2;margin-bottom:14px">💬</div>
   <div style="font-size:15px;font-weight:600;margin-bottom:6px">Henüz görüş bulunmuyor</div>
-  {% if filtre_tur or filtre_okundu %}
-  <div style="font-size:13px">Bu filtre için sonuç yok. <a href="/admin/gorusler" style="color:var(--ana)">Filtreyi temizle</a></div>
-  {% endif %}
+  {% if filtre_tur or filtre_okundu %}<a href="/admin/gorusler" style="font-size:13px;color:var(--ana)">Filtreyi temizle</a>{% endif %}
 </div>
 {% endif %}
 
+<!-- Detay / Not Modalı -->
+<div class="modal-bg" id="detayModal">
+  <div class="modal">
+    <div class="modal-bas">
+      <span id="mTurB" class="tur-b"></span>
+      <h3 id="mBaslik">Görüş Detayı</h3>
+      <button class="modal-kapat" onclick="modalKapat()">✕</button>
+    </div>
+    <div class="modal-govde">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;color:var(--metin-uc)" id="mMeta"></div>
+      <div style="font-size:14px;line-height:1.7;background:var(--gri-ac);border-radius:var(--r);padding:14px;white-space:pre-wrap;word-break:break-word;margin-bottom:1rem;max-height:300px;overflow:auto" id="mIcerik"></div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">📌 Admin Notu</div>
+      <form method="POST" id="mNotForm" action="" class="not-form">
+        <textarea name="admin_not" id="mNotAlan" placeholder="Bu görüş için not, etiket veya aksiyon ekle..."></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button type="button" onclick="modalKapat()" class="btn btn-gri btn-kucuk">İptal</button>
+          <button type="submit" class="btn btn-ana btn-kucuk">💾 Notu Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
-// Arama
-function aramaYap(q) {
-  q = q.toLowerCase().trim();
-  var kartlar = document.querySelectorAll('.gorus-kart');
-  var gorunen = 0;
-  kartlar.forEach(function(k) {
-    var icerik = k.getAttribute('data-icerik') || '';
-    var goster = !q || icerik.includes(q);
-    k.style.display = goster ? '' : 'none';
-    if (goster) gorunen++;
-  });
-  document.getElementById('sonucSayi').textContent = gorunen + ' sonuç gösteriliyor';
-}
+var gv = {
+{% for g in liste %}
+  "{{ g.id }}": {tur:"{{ g.tur }}",tarih:"{{ g.tarih }}",saat:"{{ g.saat }}",okundu:{{ 1 if g.okundu else 0 }},icerik:{{ g.icerik|tojson }},not:{{ (g.admin_not or '')|tojson }}},
+{% endfor %}
+};
+var tM={dilek:"🌟 Dilek",gorus:"💬 Görüş",sikayet:"⚠️ Şikayet",tebrik:"👏 Tebrik"};
+var curOkundu="{{ filtre_okundu }}",curTur="{{ filtre_tur }}";
 
-// Grid / Liste toggle
-function gorunumSec(mod) {
-  var liste = document.getElementById('gorusListesi');
-  if (!liste) return;
-  if (mod === 'grid') {
-    liste.classList.add('gorus-grid');
-    document.getElementById('gridBtn').classList.add('aktif');
-    document.getElementById('listBtn').classList.remove('aktif');
+function sekmeGit(o){
+  var q=o?"?okundu="+o:"";
+  if(curTur) q+=(q?"&":"?")+"tur="+curTur;
+  window.location="/admin/gorusler"+q;
+}
+function turFiltrele(t){
+  var q=t?"?tur="+t:"";
+  if(curOkundu) q+=(q?"&":"?")+"okundu="+curOkundu;
+  window.location="/admin/gorusler"+q;
+}
+function aramaYap(q){
+  q=q.toLowerCase().trim();
+  var ks=document.querySelectorAll('.gk'),n=0;
+  ks.forEach(function(k){
+    var ic=k.getAttribute('data-icerik')||'';
+    var v=!q||ic.includes(q);
+    k.style.display=v?'':'none';
+    if(v)n++;
+  });
+  document.getElementById('sonucSayi').textContent=n+' kayıt';
+}
+function sirala(mod){
+  var el=document.getElementById('gorusListesi');
+  if(!el)return;
+  var ks=Array.from(el.querySelectorAll('.gk'));
+  ks.sort(function(a,b){
+    if(mod==='eski')return a.getAttribute('data-tarih').localeCompare(b.getAttribute('data-tarih'));
+    if(mod==='uzun')return parseInt(b.getAttribute('data-len'))-parseInt(a.getAttribute('data-len'));
+    return b.getAttribute('data-tarih').localeCompare(a.getAttribute('data-tarih'));
+  });
+  ks.forEach(function(k){el.appendChild(k);});
+}
+function gorunumSec(mod){
+  var el=document.getElementById('gorusListesi');
+  if(!el)return;
+  if(mod==='grid'){
+    el.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px';
   } else {
-    liste.classList.remove('gorus-grid');
-    document.getElementById('listBtn').classList.add('aktif');
-    document.getElementById('gridBtn').classList.remove('aktif');
+    el.style.cssText='';
   }
-  localStorage.setItem('gorus_gorunum', mod);
+  document.getElementById('gridBtn').classList.toggle('aktif',mod==='grid');
+  document.getElementById('listBtn').classList.toggle('aktif',mod==='liste');
+  try{localStorage.setItem('gk_g',mod);}catch(e){}
 }
-
-// Sayfa yüklenince tercih uygula
-(function() {
-  var pref = localStorage.getItem('gorus_gorunum');
-  if (pref === 'grid') gorunumSec('grid');
-})();
-
-// Devamını göster
-function genislet(id) {
-  var el = document.getElementById('icerik_' + id);
-  if (!el) return;
+(function(){try{var p=localStorage.getItem('gk_g');if(p==='grid')gorunumSec('grid');}catch(e){}})();
+function genislet(id){
+  var el=document.getElementById('ic_'+id);
+  if(!el)return;
   el.classList.toggle('genislet');
-  var btn = el.nextElementSibling;
-  if (btn && btn.classList.contains('devami')) {
-    btn.textContent = el.classList.contains('genislet') ? '▲ Daralt' : '▼ Devamını göster';
-  }
+  var btn=el.nextElementSibling;
+  if(btn&&btn.classList.contains('devami'))
+    btn.textContent=el.classList.contains('genislet')?'▲ Daralt':'▼ Devamını göster';
 }
-
-// Kopyala
-function kopyala(id, btn) {
-  var el = document.getElementById('icerik_' + id);
-  if (!el) return;
-  navigator.clipboard.writeText(el.textContent.trim()).then(function() {
-    var orig = btn.textContent;
-    btn.textContent = '✓ Kopyalandı';
-    setTimeout(function() { btn.textContent = orig; }, 1500);
+function kopyala(id,btn){
+  var el=document.getElementById('ic_'+id);
+  if(!el)return;
+  navigator.clipboard.writeText(el.textContent.trim()).then(function(){
+    var o=btn.textContent;btn.textContent='✓ Kopyalandı';
+    setTimeout(function(){btn.textContent=o;},1500);
   });
 }
-
-// Klavye kısayolu: / tuşu arama odakla
-document.addEventListener('keydown', function(e) {
-  if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
-    e.preventDefault();
-    document.getElementById('aramaInp').focus();
+function detayAc(id){
+  var g=gv[id];if(!g)return;
+  var tK='tur-'+g.tur;
+  document.getElementById('mTurB').textContent=tM[g.tur]||g.tur;
+  document.getElementById('mTurB').className='tur-b '+tK;
+  document.getElementById('mBaslik').textContent='Görüş #'+id;
+  document.getElementById('mMeta').innerHTML='<span>📅 '+g.tarih+'</span><span>⏰ '+g.saat+'</span><span>'+(g.okundu?'✓ Okundu':'🔵 Okunmamış')+'</span>';
+  document.getElementById('mIcerik').textContent=g.icerik;
+  document.getElementById('mNotAlan').value=g.not||'';
+  document.getElementById('mNotForm').action='/admin/gorus/'+id+'/not';
+  document.getElementById('detayModal').classList.add('goster');
+}
+function modalKapat(){document.getElementById('detayModal').classList.remove('goster');}
+document.getElementById('detayModal').addEventListener('click',function(e){if(e.target===this)modalKapat();});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')modalKapat();
+  if(e.key==='/'&&document.activeElement.tagName!=='INPUT'&&document.activeElement.tagName!=='TEXTAREA'){
+    e.preventDefault();document.getElementById('aramaInp').focus();
   }
 });
 </script>

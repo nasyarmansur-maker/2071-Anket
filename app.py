@@ -39,7 +39,8 @@ def db_init():
             icerik TEXT NOT NULL,
             tarih TEXT NOT NULL,
             saat TEXT NOT NULL,
-            okundu INTEGER DEFAULT 0
+            okundu INTEGER DEFAULT 0,
+            admin_not TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS bolumler (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,6 +179,13 @@ def _varsayilan_anketler(c):
                           (bid,sm,st,sse,sz,ss,ksid,kdeger))
 
 db_init()
+
+# Migration: admin_not sütunu yoksa ekle
+with db() as _mc:
+    cols = [r[1] for r in _mc.execute("PRAGMA table_info(gorusler)").fetchall()]
+    if "admin_not" not in cols:
+        _mc.execute("ALTER TABLE gorusler ADD COLUMN admin_not TEXT DEFAULT ''")
+        _mc.commit()
 
 # ─── Yardımcı ─────────────────────────────────────────────────────
 def ayar(k, v=""):
@@ -942,6 +950,161 @@ def tam_veri_yedek_yukle():
         c.commit()
     flash_msg = f"Yüklendi: {yuklenen['yanitlar']} yanıt, {yuklenen['gorusler']} görüş."
     return redirect(url_for("admin_ayarlar") + "?veri_yuklendi=1&msg=" + flash_msg)
+
+
+# ─── Görüş Admin Notu Kaydet ─────────────────────────────────────
+@app.route("/admin/gorus/<int:gid>/not", methods=["POST"])
+@giris_gerekli
+def gorus_not_kaydet(gid):
+    not_metin = request.form.get("admin_not","").strip()
+    with db() as c:
+        c.execute("UPDATE gorusler SET admin_not=? WHERE id=?", (not_metin, gid))
+        c.commit()
+    return redirect(request.referrer or url_for("admin_gorusler"))
+
+# ─── Görüşler Excel İndir ─────────────────────────────────────────
+@app.route("/admin/gorusler/excel")
+@giris_gerekli
+def gorusler_excel():
+    import csv, io as _io
+    filtre_tur = request.args.get("tur","")
+    filtre_okundu = request.args.get("okundu","")
+    with db() as c:
+        q = "SELECT * FROM gorusler WHERE 1=1"
+        params = []
+        if filtre_tur: q += " AND tur=?"; params.append(filtre_tur)
+        if filtre_okundu == "0": q += " AND okundu=0"
+        elif filtre_okundu == "1": q += " AND okundu=1"
+        q += " ORDER BY id DESC"
+        gorusler = [dict(r) for r in c.execute(q, params).fetchall()]
+    tur_map = {"dilek":"Dilek & Temenni","gorus":"Görüş & Öneri","sikayet":"Şikayet","tebrik":"Teşekkür & Tebrik"}
+    buf = _io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["#","Tür","Tarih","Saat","Durum","Mesaj","Admin Notu"])
+    for g in gorusler:
+        w.writerow([g["id"], tur_map.get(g["tur"],g["tur"]), g["tarih"], g["saat"],
+                    "Okundu" if g["okundu"] else "Okunmamış",
+                    g["icerik"], g.get("admin_not","")])
+    out = buf.getvalue().encode("utf-8-sig")
+    fn = f"gorusler_{simdi().strftime('%Y%m%d_%H%M')}.csv"
+    return send_file(_io.BytesIO(out), mimetype="text/csv;charset=utf-8",
+                     download_name=fn, as_attachment=True)
+
+# ─── Yedekleme Merkezi Sayfası ────────────────────────────────────
+@app.route("/admin/yedekleme", methods=["GET","POST"])
+@giris_gerekli
+def admin_yedekleme():
+    mesaj = None
+    if request.method == "POST":
+        islem = request.form.get("islem","")
+        if islem == "yukle_tam":
+            f = request.files.get("yedek_dosya")
+            if not f or not f.filename.endswith(".json"):
+                mesaj = ("hata","Geçerli bir .json dosyası seçin.")
+            else:
+                try:
+                    veri = json.loads(f.read().decode("utf-8"))
+                    versiyon = veri.get("versiyon","")
+                    with db() as c:
+                        if versiyon == "tam_v1":
+                            hassas = {"admin_sifre","smtp_pass"}
+                            for k, v in veri.get("ayarlar", {}).items():
+                                if k in hassas: continue
+                                c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)", (k, v))
+                        elif versiyon == "tam_veri_v1":
+                            for y in veri.get("yanitlar",[]):
+                                if not c.execute("SELECT id FROM yanitlar WHERE id=?",(y["id"],)).fetchone():
+                                    c.execute("INSERT INTO yanitlar (id,anket_id,tarih,saat,veriler) VALUES (?,?,?,?,?)",
+                                              (y["id"],y["anket_id"],y["tarih"],y["saat"],y["veriler"]))
+                            for g in veri.get("gorusler",[]):
+                                if not c.execute("SELECT id FROM gorusler WHERE id=?",(g["id"],)).fetchone():
+                                    c.execute("INSERT INTO gorusler (id,tur,icerik,tarih,saat,okundu,admin_not) VALUES (?,?,?,?,?,?,?)",
+                                              (g["id"],g["tur"],g["icerik"],g["tarih"],g["saat"],g.get("okundu",0),g.get("admin_not","")))
+                        else:
+                            mesaj = ("hata","Tanınmayan yedek formatı.")
+                        if not mesaj:
+                            c.commit()
+                            mesaj = ("basari","Yedek başarıyla geri yüklendi.")
+                except Exception as e:
+                    mesaj = ("hata", f"Hata: {e}")
+    ctx = gctx()
+    with db() as c:
+        ctx["anket_sayisi"] = c.execute("SELECT COUNT(*) FROM anketler").fetchone()[0]
+        ctx["yanit_sayisi"] = c.execute("SELECT COUNT(*) FROM yanitlar").fetchone()[0]
+        ctx["gorus_sayisi"] = c.execute("SELECT COUNT(*) FROM gorusler").fetchone()[0]
+        ctx["ayar_sayisi"]  = c.execute("SELECT COUNT(*) FROM ayarlar").fetchone()[0]
+    ctx["mesaj"] = mesaj
+    return render_template("admin_yedekleme.html", **ctx)
+
+# ─── Seçili Yedek İndir (yedekleme merkezi) ──────────────────────
+@app.route("/admin/yedek/seçimli")
+@giris_gerekli
+def yedek_secimli():
+    tur = request.args.get("tur","tam")
+    simdi_str = simdi().strftime("%Y%m%d_%H%M")
+    with db() as c:
+        ayarlar_raw = {r["anahtar"]:r["deger"] for r in c.execute("SELECT anahtar,deger FROM ayarlar").fetchall()}
+        hassas = {"admin_sifre","smtp_pass"}
+        ayarlar_temiz = {k:v for k,v in ayarlar_raw.items() if k not in hassas}
+
+    if tur == "ayarlar":
+        veri = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"ayarlar":ayarlar_temiz,"anketler":[]}
+        fn = f"ayarlar_yedek_{simdi_str}.json"
+    elif tur == "gorusler":
+        with db() as c:
+            gorusler = [dict(r) for r in c.execute("SELECT * FROM gorusler ORDER BY id").fetchall()]
+        veri = {"versiyon":"gorusler_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"gorusler":gorusler}
+        fn = f"gorusler_yedek_{simdi_str}.json"
+    elif tur == "anketler":
+        with db() as c:
+            anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
+        anket_listesi = []
+        for a in anketler_raw:
+            aobj = dict(a)
+            with db() as c:
+                bolumler = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
+            aobj["bolumler"] = []
+            for b in bolumler:
+                bobj = dict(b)
+                with db() as c:
+                    sorular = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
+                bobj["sorular"] = [dict(s) for s in sorular]
+                aobj["bolumler"].append(bobj)
+            anket_listesi.append(aobj)
+        veri = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+                "ayarlar":ayarlar_temiz,"anketler":anket_listesi}
+        fn = f"anketler_yedek_{simdi_str}.json"
+    elif tur == "yanitlar":
+        with db() as c:
+            yanitlar = [dict(r) for r in c.execute("SELECT * FROM yanitlar ORDER BY id").fetchall()]
+        veri = {"versiyon":"yanitlar_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"yanitlar":yanitlar}
+        fn = f"yanitlar_yedek_{simdi_str}.json"
+    else:  # tam — her şey
+        with db() as c:
+            yanitlar = [dict(r) for r in c.execute("SELECT * FROM yanitlar ORDER BY id").fetchall()]
+            gorusler = [dict(r) for r in c.execute("SELECT * FROM gorusler ORDER BY id").fetchall()]
+            anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
+        anket_listesi = []
+        for a in anketler_raw:
+            aobj = dict(a)
+            with db() as c:
+                bolumler = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
+            aobj["bolumler"] = []
+            for b in bolumler:
+                bobj = dict(b)
+                with db() as c:
+                    sorular = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
+                bobj["sorular"] = [dict(s) for s in sorular]
+                aobj["bolumler"].append(bobj)
+            anket_listesi.append(aobj)
+        veri = {"versiyon":"tam_veri_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+                "ayarlar":ayarlar_temiz,"anketler":anket_listesi,
+                "yanitlar":yanitlar,"gorusler":gorusler}
+        fn = f"tam_yedek_{simdi_str}.json"
+
+    js = json.dumps(veri, ensure_ascii=False, indent=2)
+    buf = io.BytesIO(js.encode("utf-8"))
+    return send_file(buf, mimetype="application/json", download_name=fn, as_attachment=True)
 
 
 @app.route("/admin/gorus_ayarlar", methods=["GET","POST"])

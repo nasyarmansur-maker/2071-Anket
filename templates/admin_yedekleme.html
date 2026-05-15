@@ -1,0 +1,144 @@
+{% extends "admin_base.html" %}
+{% set aktif_sayfa = "yedekleme" %}
+{% block baslik %}Yedekleme Merkezi{% endblock %}
+{% block ekstra_css %}
+<style>
+.yedek-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:1.5rem}
+.yedek-kart{background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1.25rem;display:flex;flex-direction:column;gap:10px;transition:box-shadow .12s}
+.yedek-kart:hover{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.yedek-kart .yk-ikon{font-size:32px;margin-bottom:2px}
+.yedek-kart .yk-baslik{font-size:15px;font-weight:700;margin-bottom:2px}
+.yedek-kart .yk-acik{font-size:12px;color:var(--metin-ik);line-height:1.5}
+.yedek-kart .yk-sayi{font-size:11px;color:var(--metin-uc);background:var(--gri-ac);border-radius:20px;padding:2px 10px;display:inline-block;margin-top:auto}
+.yk-aksiyonlar{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.bolum-baslik{font-size:16px;font-weight:800;margin:1.5rem 0 .75rem;padding-bottom:.5rem;border-bottom:2px solid var(--kenar)}
+.yukle-alan{background:var(--gri-ac);border:2px dashed var(--kenar);border-radius:var(--r-lg);padding:1.5rem;text-align:center;cursor:pointer;transition:all .15s}
+.yukle-alan:hover{border-color:var(--ana);background:var(--ana-ac)}
+.yukle-alan input{display:none}
+.mesaj-kutu{border-radius:var(--r-lg);padding:.875rem 1.125rem;margin-bottom:1rem;font-size:14px;font-weight:600}
+.mesaj-basari{background:var(--yesil-ac);border:1px solid #b5d89a;color:var(--yesil)}
+.mesaj-hata{background:#fde8e8;border:1px solid #f5b8b8;color:var(--kirmizi)}
+</style>
+{% endblock %}
+{% block admin_icerik %}
+
+{% if mesaj %}
+<div class="mesaj-kutu mesaj-{{ mesaj[0] }}">
+  {% if mesaj[0]=='basari' %}✅{% else %}⚠️{% endif %} {{ mesaj[1] }}
+</div>
+{% endif %}
+
+<div class="sayfa-baslik">💾 Yedekleme Merkezi</div>
+<p style="font-size:13px;color:var(--metin-ik);margin-bottom:1.5rem">
+  Uygulama verilerinizi yedekleyin, dışa aktarın veya geri yükleyin. Düzenli yedek almanız önerilir.
+</p>
+
+<!-- İndir Seçenekleri -->
+<div class="bolum-baslik">⬇ Yedek İndir</div>
+<div class="yedek-grid">
+
+  <!-- Tam Yedek -->
+  <div class="yedek-kart" style="border-top:3px solid var(--ana)">
+    <div class="yk-ikon">🗄️</div>
+    <div>
+      <div class="yk-baslik">Tam Yedek (Her Şey)</div>
+      <div class="yk-acik">Ayarlar, anket yapıları, tüm yanıtlar ve görüşler dahil eksiksiz yedek.</div>
+    </div>
+    <div class="yk-sayi">{{ anket_sayisi }} anket · {{ yanit_sayisi }} yanıt · {{ gorus_sayisi }} görüş</div>
+    <div class="yk-aksiyonlar">
+      <a href="/admin/yedek/seçimli?tur=tam" class="btn btn-ana btn-kucuk">⬇ JSON İndir</a>
+    </div>
+  </div>
+
+  <!-- Ayarlar Yedeği -->
+  <div class="yedek-kart">
+    <div class="yk-ikon">⚙️</div>
+    <div>
+      <div class="yk-baslik">Ayarlar Yedeği</div>
+      <div class="yk-acik">Tüm sistem ayarları (tema, renkler, metinler). Şifreler hariç tutulur.</div>
+    </div>
+    <div class="yk-sayi">{{ ayar_sayisi }} ayar</div>
+    <div class="yk-aksiyonlar">
+      <a href="/admin/yedek/seçimli?tur=ayarlar" class="btn btn-gri btn-kucuk">⬇ JSON İndir</a>
+    </div>
+  </div>
+
+  <!-- Anketler + Yapı -->
+  <div class="yedek-kart">
+    <div class="yk-ikon">📋</div>
+    <div>
+      <div class="yk-baslik">Anket Yapısı</div>
+      <div class="yk-acik">Tüm anket şablonları, bölümler ve sorular. Yanıtlar dahil edilmez.</div>
+    </div>
+    <div class="yk-sayi">{{ anket_sayisi }} anket yapısı</div>
+    <div class="yk-aksiyonlar">
+      <a href="/admin/yedek/seçimli?tur=anketler" class="btn btn-gri btn-kucuk">⬇ JSON İndir</a>
+    </div>
+  </div>
+
+  <!-- Anket Yanıtları -->
+  <div class="yedek-kart">
+    <div class="yk-ikon">📊</div>
+    <div>
+      <div class="yk-baslik">Anket Yanıtları</div>
+      <div class="yk-acik">Tüm anketlere gelen yanıtlar. Anket yapısı dahil edilmez.</div>
+    </div>
+    <div class="yk-sayi">{{ yanit_sayisi }} yanıt</div>
+    <div class="yk-aksiyonlar">
+      <a href="/admin/yedek/seçimli?tur=yanitlar" class="btn btn-gri btn-kucuk">⬇ JSON İndir</a>
+    </div>
+  </div>
+
+  <!-- Görüşler -->
+  <div class="yedek-kart">
+    <div class="yk-ikon">💬</div>
+    <div>
+      <div class="yk-baslik">Görüş & Dilekler</div>
+      <div class="yk-acik">Tüm görüş, dilek, şikayet ve teşekkür kayıtları + admin notları.</div>
+    </div>
+    <div class="yk-sayi">{{ gorus_sayisi }} görüş</div>
+    <div class="yk-aksiyonlar">
+      <a href="/admin/yedek/seçimli?tur=gorusler" class="btn btn-gri btn-kucuk">⬇ JSON İndir</a>
+      <a href="/admin/gorusler/excel" class="btn btn-yesil btn-kucuk">⬇ CSV/Excel</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Geri Yükleme -->
+<div class="bolum-baslik">⬆ Yedek Geri Yükle</div>
+<div style="background:var(--yuzey);border:1px solid var(--kenar);border-radius:var(--r-lg);padding:1.25rem;max-width:560px">
+  <p style="font-size:13px;color:var(--metin-ik);margin-bottom:1rem;line-height:1.6">
+    Daha önce indirdiğiniz <strong>tam yedek</strong> veya <strong>tam veri yedeği</strong> dosyasını geri yükleyebilirsiniz.
+    Mevcut veriler korunur, eksik olanlar eklenir.
+  </p>
+  <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="islem" value="yukle_tam">
+    <div class="yukle-alan" onclick="this.querySelector('input').click()" id="yukleAlan">
+      <div style="font-size:32px;margin-bottom:8px">📂</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">Yedek Dosyası Seç</div>
+      <div style="font-size:12px;color:var(--metin-uc)">.json dosyası · tam yedek veya tam veri yedeği</div>
+      <input type="file" name="yedek_dosya" accept=".json" required
+             onchange="document.getElementById('yukleAlan').querySelector('div:nth-child(2)').textContent=this.files[0]?.name||'Dosya seç'">
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button type="submit" class="btn btn-ana"
+              onclick="return confirm('Yedek dosyası geri yüklenecek. Mevcut veriler korunur, eksik olanlar eklenir. Devam etmek istiyor musunuz?')">
+        ⬆ Geri Yükle
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Bilgi Notu -->
+<div style="margin-top:1.5rem;background:var(--gri-ac);border-radius:var(--r-lg);padding:1rem 1.25rem;font-size:12px;color:var(--metin-ik);line-height:1.7">
+  <strong style="display:block;margin-bottom:4px">💡 Yedekleme Hakkında</strong>
+  <ul style="margin:0;padding-left:1.2rem">
+    <li><strong>Tam Yedek</strong> — En kapsamlı seçenek. Tüm veriyi içerir. Sunucu taşıma için idealdir.</li>
+    <li><strong>Ayarlar Yedeği</strong> — Tasarım ve yapılandırma ayarları. Yeni kuruluma aktarım için kullanın.</li>
+    <li><strong>Anket Yapısı</strong> — Soruları ve bölümleri yedekler, yanıtlara dokunmaz.</li>
+    <li><strong>CSV/Excel</strong> — Görüşleri tablo olarak dışa aktarır, Excel ile açılabilir.</li>
+    <li>Admin şifresi ve e-posta şifresi güvenlik nedeniyle yedeklere dahil <strong>edilmez</strong>.</li>
+  </ul>
+</div>
+{% endblock %}
