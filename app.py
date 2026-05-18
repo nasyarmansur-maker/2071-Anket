@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify, make_response
 import sqlite3, json, os, io, base64, smtplib, qrcode
+from libsql_client import create_client
+import os
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from email.mime.text import MIMEText
@@ -11,8 +13,10 @@ DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "anket.db")
 
 # ─── Veritabanı ───────────────────────────────────────────────────
 def db():
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
+    con = create_client(
+        url=os.getenv("TURSO_DATABASE_URL"),
+        auth_token=os.getenv("TURSO_AUTH_TOKEN")
+    )
     return con
 
 def db_init():
