@@ -1,5 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify, make_response
 import sqlite3, json, os, io, base64, smtplib, qrcode
+import os
+
+DB = os.getenv("TURSO_DATABASE_URL")
+AUTH_TOKEN = os.getenv("TURSO_AUTH_TOKEN")
 from libsql_client import create_client
 import os
 from datetime import datetime, timedelta, timezone
