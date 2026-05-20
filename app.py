@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify, make_response
-import sqlite3, json, os, io, base64, smtplib, qrcode
+import psycopg2, psycopg2.extras, json, os, io, base64, smtplib, qrcode
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from email.mime.text import MIMEText
@@ -7,22 +7,24 @@ from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = "okul_anket_super_gizli_2024"
-DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "anket.db")
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # ─── Veritabanı ───────────────────────────────────────────────────
 def db():
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
+    con = psycopg2.connect(DATABASE_URL)
+    con.autocommit = False
     return con
 
 def db_init():
     with db() as c:
-        c.executescript("""
+        cur = c.cursor()
+        cur.execute("""
         CREATE TABLE IF NOT EXISTS ayarlar (
             anahtar TEXT PRIMARY KEY, deger TEXT
         );
         CREATE TABLE IF NOT EXISTS anketler (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             rol TEXT NOT NULL, baslik TEXT NOT NULL,
             icon TEXT NOT NULL DEFAULT '📝',
             aktif INTEGER DEFAULT 1, sira INTEGER DEFAULT 0,
@@ -34,7 +36,7 @@ def db_init():
             tek_seferlik INTEGER DEFAULT 1
         );
         CREATE TABLE IF NOT EXISTS gorusler (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             tur TEXT NOT NULL DEFAULT 'dilek',
             icerik TEXT NOT NULL,
             tarih TEXT NOT NULL,
@@ -43,12 +45,12 @@ def db_init():
             admin_not TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS bolumler (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             anket_id INTEGER NOT NULL, baslik TEXT NOT NULL, sira INTEGER DEFAULT 0,
             aktif INTEGER DEFAULT 1, gorsel TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS sorular (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             bolum_id INTEGER NOT NULL, metin TEXT NOT NULL,
             tip TEXT NOT NULL DEFAULT 'yildiz',
             secenekler TEXT DEFAULT '[]',
@@ -58,7 +60,7 @@ def db_init():
             aktif INTEGER DEFAULT 1, gorsel TEXT DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS yanitlar (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             anket_id INTEGER NOT NULL,
             tarih TEXT NOT NULL, saat TEXT NOT NULL, veriler TEXT NOT NULL
         );
@@ -120,12 +122,13 @@ def db_init():
             "hero_alt_boyut": "16"
         }
         for k, v in defaults.items():
-            c.execute("INSERT OR IGNORE INTO ayarlar VALUES (?,?)", (k, v))
-        if not c.execute("SELECT 1 FROM anketler").fetchone():
-            _varsayilan_anketler(c)
+            cur.execute("INSERT INTO ayarlar (anahtar, deger) VALUES (%s, %s) ON CONFLICT (anahtar) DO NOTHING", (k, v))
+        cur.execute("SELECT 1 FROM anketler LIMIT 1")
+        if not cur.fetchone():
+            _varsayilan_anketler(cur)
         c.commit()
 
-def _varsayilan_anketler(c):
+def _varsayilan_anketler(cur):
     veri = [
         ("ogrenci","Öğrenci Değerlendirme Anketi","🎒",0,[
             ("Ders ve Öğretim",[
@@ -171,30 +174,35 @@ def _varsayilan_anketler(c):
         ]),
     ]
     for rol,baslik,icon,sira,bolumler in veri:
-        aid=c.execute("INSERT INTO anketler (rol,baslik,icon,sira) VALUES (?,?,?,?)",(rol,baslik,icon,sira)).lastrowid
+        cur.execute("INSERT INTO anketler (rol,baslik,icon,sira) VALUES (%s,%s,%s,%s) RETURNING id",(rol,baslik,icon,sira))
+        aid = cur.fetchone()[0]
         for bs,(bb,sorular) in enumerate(bolumler):
-            bid=c.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (?,?,?)",(aid,bb,bs)).lastrowid
+            cur.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (%s,%s,%s) RETURNING id",(aid,bb,bs))
+            bid = cur.fetchone()[0]
             for ss,(sm,st,sse,sz,ksid,kdeger) in enumerate(sorular):
-                c.execute("INSERT INTO sorular (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger) VALUES (?,?,?,?,?,?,?,?)",
+                cur.execute("INSERT INTO sorular (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
                           (bid,sm,st,sse,sz,ss,ksid,kdeger))
 
 db_init()
 
-# Migration: admin_not sütunu yoksa ekle
-with db() as _mc:
-    cols = [r[1] for r in _mc.execute("PRAGMA table_info(gorusler)").fetchall()]
-    if "admin_not" not in cols:
-        _mc.execute("ALTER TABLE gorusler ADD COLUMN admin_not TEXT DEFAULT ''")
-        _mc.commit()
-
 # ─── Yardımcı ─────────────────────────────────────────────────────
+def fetchall_dict(cur):
+    cols = [desc[0] for desc in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+def fetchone_dict(cur):
+    cols = [desc[0] for desc in cur.description]
+    row = cur.fetchone()
+    return dict(zip(cols, row)) if row else None
+
 def ayar(k, v=""):
     with db() as c:
-        r=c.execute("SELECT deger FROM ayarlar WHERE anahtar=?",(k,)).fetchone()
-    return r["deger"] if r else v
+        cur = c.cursor()
+        cur.execute("SELECT deger FROM ayarlar WHERE anahtar=%s",(k,))
+        r = cur.fetchone()
+    return r[0] if r else v
 
 def simdi():
-    """Ayardaki UTC offset'e göre şimdiki zamanı döndürür."""
     try:
         offset = int(ayar("saat_dilimi_offset", "3"))
     except Exception:
@@ -203,27 +211,33 @@ def simdi():
 
 def ayar_set(k,v):
     with db() as c:
-        c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)",(k,v)); c.commit()
+        cur = c.cursor()
+        cur.execute("INSERT INTO ayarlar (anahtar,deger) VALUES (%s,%s) ON CONFLICT (anahtar) DO UPDATE SET deger=EXCLUDED.deger",(k,v))
+        c.commit()
 
 def get_anket(aid):
     with db() as c:
-        a=c.execute("SELECT * FROM anketler WHERE id=?",(aid,)).fetchone()
+        cur = c.cursor()
+        cur.execute("SELECT * FROM anketler WHERE id=%s",(aid,))
+        a = fetchone_dict(cur)
         if not a: return None
-        bolumler=c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(aid,)).fetchall()
-        result=dict(a); result["bolumler"]=[]
+        cur.execute("SELECT * FROM bolumler WHERE anket_id=%s ORDER BY sira",(aid,))
+        bolumler = fetchall_dict(cur)
+        result = dict(a); result["bolumler"] = []
         for b in bolumler:
-            bd=dict(b)
-            sorular=c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
-            bd["sorular"]=[dict(s) for s in sorular]
+            bd = dict(b)
+            cur.execute("SELECT * FROM sorular WHERE bolum_id=%s ORDER BY sira",(b["id"],))
+            sorular = fetchall_dict(cur)
+            bd["sorular"] = [dict(s) for s in sorular]
             for s in bd["sorular"]:
-                raw=json.loads(s["secenekler"] or "[]")
-                normalized=[]
+                raw = json.loads(s["secenekler"] or "[]")
+                normalized = []
                 for opt in raw:
                     if isinstance(opt,str):
                         normalized.append({"metin":opt,"mg":0,"mz":0,"ph":""})
                     elif isinstance(opt,dict):
                         normalized.append({"metin":opt.get("metin",opt.get("m","")),"mg":int(opt.get("mg",0)),"mz":int(opt.get("mz",0)),"ph":opt.get("ph","")})
-                s["secenekler"]=normalized
+                s["secenekler"] = normalized
             result["bolumler"].append(bd)
         return result
 
@@ -288,8 +302,9 @@ def email_gonder(konu, icerik):
 @app.route("/")
 def anasayfa():
     with db() as c:
-        anketler=c.execute("SELECT * FROM anketler WHERE aktif=1 ORDER BY sira").fetchall()
-    bugun=simdi().strftime("%Y-%m-%d")
+        cur = c.cursor()
+        cur.execute("SELECT * FROM anketler WHERE aktif=1 ORDER BY sira")
+        anketler = fetchall_dict(cur)
     liste=[]
     for a in anketler:
         ad=dict(a)
@@ -309,7 +324,7 @@ def anasayfa():
     ctx["gorunum"]=ayar("anasayfa_gorunum","kartlar")
     return render_template("anasayfa.html",**ctx)
 
-# ─── Anket (adım adım) ────────────────────────────────────────────
+# ─── Anket ────────────────────────────────────────────────────────
 @app.route("/anket/<int:anket_id>", methods=["GET","POST"])
 def anket(anket_id):
     a=get_anket(anket_id)
@@ -318,7 +333,6 @@ def anket(anket_id):
     if not aktif:
         ctx=gctx(); ctx["mesaj"]=msg; ctx["anket"]=a
         return render_template("anket_kapali.html",**ctx)
-    # ── Tekrar doldurma kontrolü (anket bazında tek_seferlik) ──
     cookie_key = f"dolduruldu_{anket_id}"
     session_key = f"yanit_{anket_id}"
     tek_seferlik = a.get("tek_seferlik", 1)
@@ -332,56 +346,45 @@ def anket(anket_id):
             ctx["kilit_gorsel_sekil"]=ayar("kilit_gorsel_sekil","kare")
             return render_template("zaten_dolduruldu.html",**ctx)
     if request.method=="POST":
-        # Gizli alan ile localStorage kontrolü — JS kayıtlıysa bunu gönderir
         ls_flag = request.form.get("_ls_dolduruldu","")
         if ls_flag == "1":
             ctx=gctx(); ctx["anket"]=a
             return render_template("zaten_dolduruldu.html",**ctx)
-        v={k:request.form.getlist(k) if k.endswith("[]") else val
-           for k,val in request.form.items()}
-        # checkbox alanlarını düzgün topla
         veriler={}
         for key in request.form:
-            if key.endswith('_diger'): continue  # ayrı işlenecek
+            if key.endswith('_diger'): continue
             vals=request.form.getlist(key)
             veriler[key]=",".join(vals) if len(vals)>1 else vals[0]
-        # Metin girişi olan seçenekler seçildiyse metin değerini birleştir
         for key in list(veriler.keys()):
             diger_key = key + '_diger'
             diger_val = request.form.get(diger_key,'').strip()
             if diger_val and key in veriler:
                 veriler[key] = veriler[key] + ': ' + diger_val
         with db() as c:
-            c.execute("INSERT INTO yanitlar (anket_id,tarih,saat,veriler) VALUES (?,?,?,?)",
+            cur = c.cursor()
+            cur.execute("INSERT INTO yanitlar (anket_id,tarih,saat,veriler) VALUES (%s,%s,%s,%s)",
                       (anket_id,simdi().strftime("%d.%m.%Y"),
                        simdi().strftime("%H:%M"),
                        json.dumps(veriler,ensure_ascii=False)))
             c.commit()
-        # E-posta bildirimi
         email_gonder(
             f"📋 Yeni Anket Yanıtı — {a['baslik']}",
             f"<h3>{a['icon']} {a['baslik']}</h3><p>Yeni bir yanıt alındı.</p>"
             f"<p><b>Tarih:</b> {simdi().strftime('%d.%m.%Y %H:%M')}</p>"
         )
-        # Cookie + session kaydet (sadece tek_seferlik anketlerde)
         resp = make_response(redirect(url_for("tesekkur", anket_id=anket_id)))
         if tek_seferlik:
             session[session_key] = 1
-            resp.set_cookie(cookie_key, "1",
-                            max_age=60*60*24*365,  # 1 yıl
-                            httponly=True, samesite="Lax")
+            resp.set_cookie(cookie_key, "1", max_age=60*60*24*365, httponly=True, samesite="Lax")
         return resp
-    # Sadece aktif bölüm ve soruları filtrele
     a["bolumler"] = [b for b in a["bolumler"] if b.get("aktif",1)!=0]
     for b in a["bolumler"]:
         b["sorular"] = [s for s in b["sorular"] if s.get("aktif",1)!=0]
-    a["bolumler"] = [b for b in a["bolumler"] if b["sorular"] or True]
     ctx=gctx(); ctx["anket"]=a
     ctx["sorular_json"]=json.dumps(
         {s["id"]:{"kosul_soru_id":s["kosul_soru_id"],"kosul_deger":s["kosul_deger"]}
          for b in a["bolumler"] for s in b["sorular"]},
         ensure_ascii=False)
-    # Görünüm hesapla: URL param > kullanıcı tercihi > anket ayarı > sistem varsayılanı
     varsayilan = ayar("anket_varsayilan_gorunum","adim")
     anket_gorunum = a.get("gorunum","varsayilan")
     efektif = varsayilan if anket_gorunum=="varsayilan" else anket_gorunum
@@ -393,11 +396,12 @@ def anket(anket_id):
     ctx["tek_seferlik"] = a.get("tek_seferlik", 1)
     return render_template("anket.html",**ctx)
 
-
 @app.route("/tesekkur/<int:anket_id>")
 def tesekkur(anket_id):
     with db() as c:
-        a=c.execute("SELECT * FROM anketler WHERE id=?",(anket_id,)).fetchone()
+        cur = c.cursor()
+        cur.execute("SELECT * FROM anketler WHERE id=%s",(anket_id,))
+        a = fetchone_dict(cur)
     ctx=gctx(); ctx["anket"]=dict(a) if a else {"baslik":"Anket","icon":"✅","id":0}
     ctx["anket_anasayfa_buton"]=ayar("anket_anasayfa_buton","1")
     ctx["anket_anasayfa_metin"]=ayar("anket_anasayfa_metin","Ana Sayfaya Dön")
@@ -405,7 +409,7 @@ def tesekkur(anket_id):
     ctx["anket_anasayfa_url_tip"]=ayar("anket_anasayfa_url_tip","ic")
     return render_template("tesekkur.html",**ctx)
 
-# ─── Admin giriş ─────────────────────────────────────────────────
+# ─── Admin giriş ──────────────────────────────────────────────────
 @app.route("/admin",methods=["GET","POST"])
 def admin_giris():
     hata=None
@@ -415,115 +419,45 @@ def admin_giris():
         hata="Yanlış şifre!"
     return render_template("admin_giris.html",hata=hata,**gctx())
 
-# ── Yedekleme ────────────────────────────────────────────────────
-@app.route("/admin/yedek/indir/<int:aid>")
-@giris_gerekli
-def yedek_indir(aid):
-    """Tek anketin tüm bölüm ve sorularını JSON olarak indir"""
-    a = get_anket(aid)
-    if not a: return redirect(url_for("admin_panel"))
-    # gorsel alanlarını çıkar (boyut küçülsün), sadece yapı
-    yedek = {
-        "versiyon": 1,
-        "anket_baslik": a["baslik"],
-        "anket_icon":   a["icon"],
-        "anket_rol":    a["rol"],
-        "bolumler": []
-    }
-    for b in a["bolumler"]:
-        bd = {"baslik": b["baslik"], "aktif": b.get("aktif",1), "sorular": []}
-        for s in b["sorular"]:
-            bd["sorular"].append({
-                "metin":      s["metin"],
-                "tip":        s["tip"],
-                "secenekler": s["secenekler"],
-                "zorunlu":    s["zorunlu"],
-                "aktif":      s.get("aktif",1),
-                "kosul_soru_id":  s.get("kosul_soru_id"),
-                "kosul_deger":    s.get("kosul_deger"),
-            })
-        yedek["bolumler"].append(bd)
-    js = json.dumps(yedek, ensure_ascii=False, indent=2)
-    buf = io.BytesIO(js.encode("utf-8"))
-    fn  = f"{a['baslik'][:20].replace(' ','_')}_yedek.json"
-    return send_file(buf, as_attachment=True, download_name=fn, mimetype="application/json")
-
-@app.route("/admin/yedek/yukle/<int:aid>", methods=["POST"])
-@giris_gerekli
-def yedek_yukle(aid):
-    """JSON yedeğinden bölüm ve soruları mevcut ankete ekle (üzerine yazma seçeneği ile)"""
-    f = request.files.get("yedek_dosya")
-    if not f or not f.filename.endswith(".json"):
-        return "Geçersiz dosya. Lütfen .json yedek dosyası seçin.", 400
-    try:
-        veri = json.loads(f.read().decode("utf-8"))
-    except:
-        return "Dosya okunamadı.", 400
-    if veri.get("versiyon") != 1:
-        return "Desteklenmeyen yedek versiyonu.", 400
-    
-    ustune_yaz = request.form.get("ustune_yaz") == "1"
-    
-    with db() as con:
-        if ustune_yaz:
-            for b in con.execute("SELECT id FROM bolumler WHERE anket_id=?",(aid,)).fetchall():
-                con.execute("DELETE FROM sorular WHERE bolum_id=?",(b["id"],))
-            con.execute("DELETE FROM bolumler WHERE anket_id=?",(aid,))
-        
-        # Mevcut en yüksek sıra
-        max_sira = con.execute("SELECT MAX(sira) FROM bolumler WHERE anket_id=?",(aid,)).fetchone()[0] or 0
-        
-        for bi, bolum in enumerate(veri.get("bolumler",[])):
-            bid = con.execute("INSERT INTO bolumler (anket_id,baslik,sira,aktif,gorsel) VALUES (?,?,?,?,'')",
-                (aid, bolum["baslik"], max_sira + bi + 1, bolum.get("aktif",1))).lastrowid
-            for si, soru in enumerate(bolum.get("sorular",[])):
-                con.execute("""INSERT INTO sorular
-                    (bolum_id,metin,tip,secenekler,zorunlu,sira,aktif,gorsel,kosul_soru_id,kosul_deger)
-                    VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                    (bid, soru["metin"], soru["tip"],
-                     json.dumps(soru.get("secenekler",[]), ensure_ascii=False),
-                     soru.get("zorunlu",1), si, soru.get("aktif",1), "",
-                     None, None))  # koşullu soru ID'leri yeni ortamda geçersiz
-        con.commit()
-    return redirect(url_for("admin_anket_duzenle", aid=aid))
-
 @app.route("/admin/cikis")
 def admin_cikis():
     session.clear(); return redirect(url_for("anasayfa"))
 
-# ─── Admin Panel (dashboard) ──────────────────────────────────────
+# ─── Admin Panel ──────────────────────────────────────────────────
 @app.route("/admin/panel")
 @giris_gerekli
 def admin_panel():
     with db() as c:
-        anketler=c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
-        istat=[]
-        toplam=0
+        cur = c.cursor()
+        cur.execute("SELECT * FROM anketler ORDER BY sira")
+        anketler = fetchall_dict(cur)
+        istat=[]; toplam=0
         for a in anketler:
-            sayi=c.execute("SELECT COUNT(*) as n FROM yanitlar WHERE anket_id=?",(a["id"],)).fetchone()["n"]
+            cur.execute("SELECT COUNT(*) as n FROM yanitlar WHERE anket_id=%s",(a["id"],))
+            sayi = cur.fetchone()[0]
             toplam+=sayi
-            yanitlar=c.execute("SELECT veriler FROM yanitlar WHERE anket_id=?",(a["id"],)).fetchall()
-            # Yıldız ortalamaları
+            cur.execute("SELECT veriler FROM yanitlar WHERE anket_id=%s",(a["id"],))
+            yanitlar = cur.fetchall()
             yy={}
             for y in yanitlar:
-                for k,val in json.loads(y["veriler"]).items():
+                for k,val in json.loads(y[0]).items():
                     if k.startswith("s_"):
                         try:
                             iv=int(val)
                             if 1<=iv<=5: yy.setdefault(k,[]).append(iv)
                         except: pass
             avg={k:round(sum(vs)/len(vs),1) for k,vs in yy.items()}
-            # Son 7 gün istatistik
-            son7=c.execute("""SELECT tarih, COUNT(*) as sayi FROM yanitlar
-                WHERE anket_id=? GROUP BY tarih ORDER BY tarih DESC LIMIT 7""",(a["id"],)).fetchall()
-            istat.append({"anket":dict(a),"sayi":sayi,"avg":avg,
-                          "son7":[dict(r) for r in son7]})
-        son=c.execute("""SELECT y.*,a.baslik as ab,a.icon as ai FROM yanitlar y
-            JOIN anketler a ON y.anket_id=a.id ORDER BY y.id DESC LIMIT 10""").fetchall()
-    ctx=gctx(); ctx.update({"istat":istat,"toplam":toplam,"son":[dict(r) for r in son]})
+            cur.execute("""SELECT tarih, COUNT(*) as sayi FROM yanitlar
+                WHERE anket_id=%s GROUP BY tarih ORDER BY tarih DESC LIMIT 7""",(a["id"],))
+            son7 = [{"tarih":r[0],"sayi":r[1]} for r in cur.fetchall()]
+            istat.append({"anket":dict(a),"sayi":sayi,"avg":avg,"son7":son7})
+        cur.execute("""SELECT y.*,a.baslik as ab,a.icon as ai FROM yanitlar y
+            JOIN anketler a ON y.anket_id=a.id ORDER BY y.id DESC LIMIT 10""")
+        son = fetchall_dict(cur)
+    ctx=gctx(); ctx.update({"istat":istat,"toplam":toplam,"son":son})
     return render_template("admin_panel.html",**ctx)
 
-# ─── Admin Sonuçlar + filtreleme ──────────────────────────────────
+# ─── Admin Sonuçlar ───────────────────────────────────────────────
 @app.route("/admin/sonuclar/<int:anket_id>")
 @giris_gerekli
 def admin_sonuclar(anket_id):
@@ -532,16 +466,25 @@ def admin_sonuclar(anket_id):
     filtre_tarih=request.args.get("tarih","")
     filtre_arama=request.args.get("arama","").lower()
     with db() as c:
-        q="SELECT * FROM yanitlar WHERE anket_id=?"
+        cur = c.cursor()
+        q="SELECT * FROM yanitlar WHERE anket_id=%s"
         params=[anket_id]
         if filtre_tarih:
-            q+=" AND tarih=?"; params.append(filtre_tarih)
+            q+=" AND tarih=%s"; params.append(filtre_tarih)
         q+=" ORDER BY id DESC"
-        yanitlar=c.execute(q,params).fetchall()
-        tarihler=c.execute("SELECT DISTINCT tarih FROM yanitlar WHERE anket_id=? ORDER BY tarih ASC",(anket_id,)).fetchall()
-        # Tüm tarihler için toplam yanıt sayısı (trend grafiği)
-        tarih_sayilari=c.execute("SELECT tarih,COUNT(*) as sayi FROM yanitlar WHERE anket_id=? GROUP BY tarih ORDER BY tarih ASC",(anket_id,)).fetchall()
-        toplam_db=c.execute("SELECT COUNT(*) as n FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchone()["n"]
+        cur.execute(q,params)
+        yanitlar = fetchall_dict(cur)
+        cur.execute("SELECT DISTINCT tarih FROM yanitlar WHERE anket_id=%s ORDER BY tarih ASC",(anket_id,))
+        tarihler = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT tarih,COUNT(*) as sayi FROM yanitlar WHERE anket_id=%s GROUP BY tarih ORDER BY tarih ASC",(anket_id,))
+        tarih_sayilari = [{"t":r[0],"n":r[1]} for r in cur.fetchall()]
+        cur.execute("SELECT COUNT(*) FROM yanitlar WHERE anket_id=%s",(anket_id,))
+        toplam_db = cur.fetchone()[0]
+        cur.execute("SELECT veriler FROM yanitlar WHERE anket_id=%s",(anket_id,))
+        tum_raw = cur.fetchall()
+        cur.execute("SELECT saat FROM yanitlar WHERE anket_id=%s",(anket_id,))
+        saatler_raw = cur.fetchall()
+
     liste=[]
     for y in yanitlar:
         v=json.loads(y["veriler"])
@@ -549,11 +492,9 @@ def admin_sonuclar(anket_id):
             if not any(filtre_arama in str(val).lower() for val in v.values()):
                 continue
         liste.append({"id":y["id"],"tarih":y["tarih"],"saat":y["saat"],"veriler":v})
-    # Tüm yanıtlar üzerinden istatistikler
-    with db() as c:
-        tum=c.execute("SELECT veriler FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchall()
-    soru_istat={}
-    yildiz_toplamlar={}  # soru_id -> (toplam_puan, sayi)
+
+    tum = [{"veriler": r[0]} for r in tum_raw]
+    soru_istat={}; yildiz_toplamlar={}
     for y in tum:
         for k,val in json.loads(y["veriler"]).items():
             if not k.startswith("s_"): continue
@@ -562,25 +503,21 @@ def admin_sonuclar(anket_id):
                 v2=v2.strip()
                 if v2:
                     soru_istat[k][v2]=soru_istat[k].get(v2,0)+1
-                    # Yıldız soruları için ortalama hesapla
                     try:
                         puan=int(v2)
                         if 1<=puan<=5:
                             if k not in yildiz_toplamlar: yildiz_toplamlar[k]=[0,0]
                             yildiz_toplamlar[k][0]+=puan; yildiz_toplamlar[k][1]+=1
                     except: pass
-    # Yıldız ortalamaları
     yildiz_ort={k:round(v[0]/v[1],1) for k,v in yildiz_toplamlar.items() if v[1]>0}
-    # Saat dağılımı (0-23)
-    with db() as c:
-        saatler_raw=c.execute("SELECT saat FROM yanitlar WHERE anket_id=?",(anket_id,)).fetchall()
+
     saat_dagilim={str(i):0 for i in range(24)}
     for row in saatler_raw:
         try:
-            saat=int(row["saat"].split(":")[0])
+            saat=int(row[0].split(":")[0])
             saat_dagilim[str(saat)]=saat_dagilim.get(str(saat),0)+1
         except: pass
-    # Yanıt tamamlanma (kaç yanıt tüm zorunlu soruları doldurmuş)
+
     tum_sorular=[]
     for b in a["bolumler"]:
         for s in b["sorular"]: tum_sorular.append(s)
@@ -590,33 +527,30 @@ def admin_sonuclar(anket_id):
         veri=json.loads(y["veriler"])
         if all(veri.get(k,"").strip() for k in zorunlu_ids): tam_doldu+=1
     tamamlanma_ort=round(tam_doldu/toplam_db*100) if toplam_db>0 else 0
-    # Soru yanıt oranları
+
     soru_yanit_oran={}
     for s in tum_sorular:
         k="s_"+str(s["id"])
         dolu=sum(1 for y in tum if json.loads(y["veriler"]).get(k,"").strip())
         soru_yanit_oran[k]=round(dolu/toplam_db*100) if toplam_db>0 else 0
-    ctx=gctx()
-    # Bölüm bazlı istatistik (bolum_id -> soru istatistikleri)
-    bolum_istat = {}
+
+    bolum_istat={}
     for bolum in a["bolumler"]:
-        bid = bolum["id"]
-        bolum_istat[bid] = {}
+        bid=bolum["id"]; bolum_istat[bid]={}
         for soru in bolum["sorular"]:
-            key = "s_"+str(soru["id"])
-            bolum_istat[bid][str(soru["id"])] = {
-                "metin": soru["metin"],
-                "tip": soru["tip"],
-                "sec_listesi": soru.get("sec_listesi", []),
-                "vals": soru_istat.get(key, {}),
-                "ort": yildiz_ort.get(key, None),
-                "yanit_oran": soru_yanit_oran.get(key, 0),
-            }
+            key="s_"+str(soru["id"])
+            bolum_istat[bid][str(soru["id"])]={
+                "metin":soru["metin"],"tip":soru["tip"],
+                "sec_listesi":soru.get("sec_listesi",[]),
+                "vals":soru_istat.get(key,{}),"ort":yildiz_ort.get(key,None),
+                "yanit_oran":soru_yanit_oran.get(key,0)}
+
+    ctx=gctx()
     ctx.update({"anket":a,"yanitlar":liste,
                 "soru_istat":json.dumps(soru_istat,ensure_ascii=False),
                 "yildiz_ort":json.dumps(yildiz_ort,ensure_ascii=False),
-                "tarihler":[r["tarih"] for r in tarihler],
-                "tarih_sayilari":json.dumps([{"t":r["tarih"],"n":r["sayi"]} for r in tarih_sayilari],ensure_ascii=False),
+                "tarihler":tarihler,
+                "tarih_sayilari":json.dumps(tarih_sayilari,ensure_ascii=False),
                 "saat_dagilim":json.dumps(saat_dagilim,ensure_ascii=False),
                 "tamamlanma_ort":tamamlanma_ort,"tam_doldu":tam_doldu,
                 "soru_yanit_oran":json.dumps(soru_yanit_oran,ensure_ascii=False),
@@ -631,14 +565,13 @@ def admin_sonuclar(anket_id):
 @giris_gerekli
 def yanit_sil(yid):
     with db() as c:
-        c.execute("DELETE FROM yanitlar WHERE id=?",(yid,)); c.commit()
+        cur = c.cursor()
+        cur.execute("DELETE FROM yanitlar WHERE id=%s",(yid,)); c.commit()
     return redirect(request.referrer or url_for("admin_panel"))
-
 
 @app.route("/admin/cookie_sifirla/<int:anket_id>", methods=["POST"])
 @giris_gerekli
 def admin_cookie_sifirla(anket_id):
-    """Cookie + session siler; localStorage temizlenmesi için ankete ?sifirla=1 ile yönlendirir."""
     cookie_key = f"dolduruldu_{anket_id}"
     session_key = f"yanit_{anket_id}"
     session.pop(session_key, None)
@@ -647,95 +580,138 @@ def admin_cookie_sifirla(anket_id):
     resp.delete_cookie(cookie_key)
     return resp
 
+# ─── Yedekleme ────────────────────────────────────────────────────
+@app.route("/admin/yedek/indir/<int:aid>")
+@giris_gerekli
+def yedek_indir(aid):
+    a = get_anket(aid)
+    if not a: return redirect(url_for("admin_panel"))
+    yedek = {"versiyon":1,"anket_baslik":a["baslik"],"anket_icon":a["icon"],"anket_rol":a["rol"],"bolumler":[]}
+    for b in a["bolumler"]:
+        bd = {"baslik":b["baslik"],"aktif":b.get("aktif",1),"sorular":[]}
+        for s in b["sorular"]:
+            bd["sorular"].append({"metin":s["metin"],"tip":s["tip"],"secenekler":s["secenekler"],
+                                   "zorunlu":s["zorunlu"],"aktif":s.get("aktif",1),
+                                   "kosul_soru_id":s.get("kosul_soru_id"),"kosul_deger":s.get("kosul_deger")})
+        yedek["bolumler"].append(bd)
+    js = json.dumps(yedek, ensure_ascii=False, indent=2)
+    buf = io.BytesIO(js.encode("utf-8"))
+    fn = f"{a['baslik'][:20].replace(' ','_')}_yedek.json"
+    return send_file(buf, as_attachment=True, download_name=fn, mimetype="application/json")
 
-# ─── Tam Yedekleme (Tüm Ayarlar + Tüm Anketler) ─────────────────
+@app.route("/admin/yedek/yukle/<int:aid>", methods=["POST"])
+@giris_gerekli
+def yedek_yukle(aid):
+    f = request.files.get("yedek_dosya")
+    if not f or not f.filename.endswith(".json"):
+        return "Geçersiz dosya.", 400
+    try:
+        veri = json.loads(f.read().decode("utf-8"))
+    except:
+        return "Dosya okunamadı.", 400
+    if veri.get("versiyon") != 1:
+        return "Desteklenmeyen yedek versiyonu.", 400
+    ustune_yaz = request.form.get("ustune_yaz") == "1"
+    with db() as con:
+        cur = con.cursor()
+        if ustune_yaz:
+            cur.execute("SELECT id FROM bolumler WHERE anket_id=%s",(aid,))
+            for b in cur.fetchall():
+                cur.execute("DELETE FROM sorular WHERE bolum_id=%s",(b[0],))
+            cur.execute("DELETE FROM bolumler WHERE anket_id=%s",(aid,))
+        cur.execute("SELECT COALESCE(MAX(sira),0) FROM bolumler WHERE anket_id=%s",(aid,))
+        max_sira = cur.fetchone()[0]
+        for bi, bolum in enumerate(veri.get("bolumler",[])):
+            cur.execute("INSERT INTO bolumler (anket_id,baslik,sira,aktif,gorsel) VALUES (%s,%s,%s,%s,'') RETURNING id",
+                (aid, bolum["baslik"], max_sira+bi+1, bolum.get("aktif",1)))
+            bid = cur.fetchone()[0]
+            for si, soru in enumerate(bolum.get("sorular",[])):
+                cur.execute("""INSERT INTO sorular
+                    (bolum_id,metin,tip,secenekler,zorunlu,sira,aktif,gorsel,kosul_soru_id,kosul_deger)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (bid, soru["metin"], soru["tip"],
+                     json.dumps(soru.get("secenekler",[]), ensure_ascii=False),
+                     soru.get("zorunlu",1), si, soru.get("aktif",1), "", None, None))
+        con.commit()
+    return redirect(url_for("admin_anket_duzenle", aid=aid))
+
+# ─── Tam Yedekleme ────────────────────────────────────────────────
 @app.route("/admin/tam_yedek/indir")
 @giris_gerekli
 def tam_yedek_indir():
-    """Tüm ayarları ve anket yapılarını tek JSON dosyasında indirir."""
     with db() as c:
-        ayarlar_raw = c.execute("SELECT anahtar, deger FROM ayarlar").fetchall()
-        anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
-    ayarlar_dict = {r["anahtar"]: r["deger"] for r in ayarlar_raw}
-    # Hassas bilgileri yedekten çıkar
+        cur = c.cursor()
+        cur.execute("SELECT anahtar, deger FROM ayarlar")
+        ayarlar_raw = cur.fetchall()
+        cur.execute("SELECT * FROM anketler ORDER BY sira")
+        anketler_raw = fetchall_dict(cur)
+    ayarlar_dict = {r[0]: r[1] for r in ayarlar_raw}
     hassas = {"admin_sifre","smtp_pass"}
     ayarlar_temiz = {k:v for k,v in ayarlar_dict.items() if k not in hassas}
     anket_listesi = []
     for a in anketler_raw:
         anket_obj = dict(a)
         with db() as c:
-            bolumler_raw = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
+            cur = c.cursor()
+            cur.execute("SELECT * FROM bolumler WHERE anket_id=%s ORDER BY sira",(a["id"],))
+            bolumler_raw = fetchall_dict(cur)
         bolum_listesi = []
         for b in bolumler_raw:
             with db() as c:
-                sorular_raw = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
-            bolum_listesi.append({
-                "baslik": b["baslik"], "sira": b["sira"], "aktif": b["aktif"],
-                "gorsel": b["gorsel"],
-                "sorular": [dict(s) for s in sorular_raw]
-            })
+                cur = c.cursor()
+                cur.execute("SELECT * FROM sorular WHERE bolum_id=%s ORDER BY sira",(b["id"],))
+                sorular_raw = fetchall_dict(cur)
+            bolum_listesi.append({"baslik":b["baslik"],"sira":b["sira"],"aktif":b["aktif"],
+                                   "gorsel":b["gorsel"],"sorular":sorular_raw})
         anket_obj["bolumler"] = bolum_listesi
         anket_listesi.append(anket_obj)
-    tam_yedek = {
-        "versiyon": "tam_v1",
-        "tarih": simdi().strftime("%Y-%m-%d %H:%M"),
-        "ayarlar": ayarlar_temiz,
-        "anketler": anket_listesi
-    }
+    tam_yedek = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+                 "ayarlar":ayarlar_temiz,"anketler":anket_listesi}
     js = json.dumps(tam_yedek, ensure_ascii=False, indent=2)
     buf = io.BytesIO(js.encode("utf-8"))
     fn = f"tam_yedek_{simdi().strftime('%Y%m%d_%H%M')}.json"
-    return send_file(buf, mimetype="application/json",
-                     download_name=fn, as_attachment=True)
+    return send_file(buf, mimetype="application/json", download_name=fn, as_attachment=True)
 
 @app.route("/admin/tam_yedek/yukle", methods=["POST"])
 @giris_gerekli
 def tam_yedek_yukle():
-    """Tam yedek dosyasını geri yükler (ayarlar + anket yapıları, yanıtlar korunur)."""
     f = request.files.get("tam_yedek_dosya")
     if not f or not f.filename.endswith(".json"):
         return "Geçersiz dosya.", 400
     try:
         veri = json.loads(f.read().decode("utf-8"))
-    except Exception:
+    except:
         return "Dosya okunamadı.", 400
     if veri.get("versiyon") != "tam_v1":
         return "Bu dosya tam yedek formatında değil.", 400
     with db() as c:
-        # Ayarları geri yükle (şifre alanlarına dokunma)
+        cur = c.cursor()
         hassas = {"admin_sifre","smtp_pass"}
         for k, v in veri.get("ayarlar", {}).items():
             if k in hassas: continue
-            c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)", (k, v))
-        # Anket yapılarını geri yükle (sadece yoksa ekle — yanıtları bozma)
+            cur.execute("INSERT INTO ayarlar (anahtar,deger) VALUES (%s,%s) ON CONFLICT (anahtar) DO UPDATE SET deger=EXCLUDED.deger", (k, v))
         yukle_anketler = request.form.get("yukle_anketler","0") == "1"
         if yukle_anketler:
             for anket_obj in veri.get("anketler", []):
-                # Aynı başlıkta anket varsa atla
-                mevcut = c.execute("SELECT id FROM anketler WHERE baslik=?",(anket_obj["baslik"],)).fetchone()
-                if mevcut: continue
-                aid = c.execute(
-                    "INSERT INTO anketler (rol,baslik,icon,aktif,sira,aciklama,gorunum) VALUES (?,?,?,?,?,?,?)",
+                cur.execute("SELECT id FROM anketler WHERE baslik=%s",(anket_obj["baslik"],))
+                if cur.fetchone(): continue
+                cur.execute("INSERT INTO anketler (rol,baslik,icon,aktif,sira,aciklama,gorunum) VALUES (%s,%s,%s,%s,%s,%s,%s) RETURNING id",
                     (anket_obj.get("rol","diger"), anket_obj["baslik"], anket_obj.get("icon","📝"),
                      anket_obj.get("aktif",1), anket_obj.get("sira",99),
-                     anket_obj.get("aciklama",""), anket_obj.get("gorunum","varsayilan"))
-                ).lastrowid
+                     anket_obj.get("aciklama",""), anket_obj.get("gorunum","varsayilan")))
+                aid = cur.fetchone()[0]
                 for bi, bolum in enumerate(anket_obj.get("bolumler",[])):
-                    bid = c.execute(
-                        "INSERT INTO bolumler (anket_id,baslik,sira,aktif,gorsel) VALUES (?,?,?,?,?)",
-                        (aid, bolum["baslik"], bolum.get("sira",bi), bolum.get("aktif",1), bolum.get("gorsel",""))
-                    ).lastrowid
+                    cur.execute("INSERT INTO bolumler (anket_id,baslik,sira,aktif,gorsel) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                        (aid, bolum["baslik"], bolum.get("sira",bi), bolum.get("aktif",1), bolum.get("gorsel","")))
+                    bid = cur.fetchone()[0]
                     for si, soru in enumerate(bolum.get("sorular",[])):
-                        c.execute(
-                            "INSERT INTO sorular (bolum_id,metin,tip,secenekler,zorunlu,sira,aktif,gorsel) VALUES (?,?,?,?,?,?,?,?)",
+                        cur.execute("INSERT INTO sorular (bolum_id,metin,tip,secenekler,zorunlu,sira,aktif,gorsel) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
                             (bid, soru["metin"], soru["tip"], soru.get("secenekler","[]"),
-                             soru.get("zorunlu",1), soru.get("sira",si), soru.get("aktif",1), soru.get("gorsel",""))
-                        )
+                             soru.get("zorunlu",1), soru.get("sira",si), soru.get("aktif",1), soru.get("gorsel","")))
         c.commit()
     return redirect(url_for("admin_ayarlar") + "?yedek_yuklendi=1")
 
-
-# ─── Kilit Görsel Yükle ──────────────────────────────────────────
+# ─── Kilit Görsel ─────────────────────────────────────────────────
 @app.route("/admin/kilit_gorsel_yukle", methods=["POST"])
 @giris_gerekli
 def kilit_gorsel_yukle():
@@ -745,20 +721,16 @@ def kilit_gorsel_yukle():
         if ext in {"jpg","jpeg","png","gif","webp","svg"}:
             data = base64.b64encode(f.read()).decode()
             gorsel_b64 = f"data:image/{ext};base64,{data}"
-            with db() as c:
-                c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)", ("kilit_gorsel", gorsel_b64))
-                c.commit()
+            ayar_set("kilit_gorsel", gorsel_b64)
     return redirect(url_for("admin_ayarlar") + "#kilit-gorsel")
 
 @app.route("/admin/kilit_gorsel_sil", methods=["POST"])
 @giris_gerekli
 def kilit_gorsel_sil():
-    with db() as c:
-        c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)", ("kilit_gorsel", ""))
-        c.commit()
+    ayar_set("kilit_gorsel", "")
     return redirect(url_for("admin_ayarlar") + "#kilit-gorsel")
 
-# ─── Görüş / Dilek / Temenni / Şikayet ──────────────────────────
+# ─── Görüş / Dilek / Şikayet ──────────────────────────────────────
 @app.route("/gorus", methods=["GET","POST"])
 def gorus_form():
     if request.method == "POST":
@@ -766,7 +738,8 @@ def gorus_form():
         icerik = request.form.get("icerik","").strip()
         if icerik:
             with db() as c:
-                c.execute("INSERT INTO gorusler (tur,icerik,tarih,saat) VALUES (?,?,?,?)",
+                cur = c.cursor()
+                cur.execute("INSERT INTO gorusler (tur,icerik,tarih,saat) VALUES (%s,%s,%s,%s)",
                           (tur, icerik, simdi().strftime("%d.%m.%Y"), simdi().strftime("%H:%M")))
                 c.commit()
         return redirect(url_for("gorus_tesekkur"))
@@ -823,23 +796,26 @@ def admin_gorusler():
     filtre_okundu = request.args.get("okundu","")
     filtre_arama = request.args.get("arama","").lower()
     with db() as c:
+        cur = c.cursor()
         q = "SELECT * FROM gorusler WHERE 1=1"
         params = []
         if filtre_tur:
-            q += " AND tur=?"; params.append(filtre_tur)
+            q += " AND tur=%s"; params.append(filtre_tur)
         if filtre_okundu == "0":
             q += " AND okundu=0"
         elif filtre_okundu == "1":
             q += " AND okundu=1"
         q += " ORDER BY id DESC"
-        tum = [dict(r) for r in c.execute(q, params).fetchall()]
+        cur.execute(q, params)
+        tum = fetchall_dict(cur)
         if filtre_arama:
             liste = [g for g in tum if filtre_arama in g["icerik"].lower()]
         else:
             liste = tum
-        sayilar = {r["tur"]:r["n"] for r in c.execute(
-            "SELECT tur, COUNT(*) as n FROM gorusler GROUP BY tur").fetchall()}
-        okunmamis = c.execute("SELECT COUNT(*) FROM gorusler WHERE okundu=0").fetchone()[0]
+        cur.execute("SELECT tur, COUNT(*) as n FROM gorusler GROUP BY tur")
+        sayilar = {r[0]:r[1] for r in cur.fetchall()}
+        cur.execute("SELECT COUNT(*) FROM gorusler WHERE okundu=0")
+        okunmamis = cur.fetchone()[0]
     ctx = gctx()
     ctx.update({"liste":liste,"sayilar":sayilar,"okunmamis":okunmamis,
                 "filtre_tur":filtre_tur,"filtre_okundu":filtre_okundu,"filtre_arama":filtre_arama})
@@ -849,24 +825,24 @@ def admin_gorusler():
 @giris_gerekli
 def gorus_okundu(gid):
     with db() as c:
-        c.execute("UPDATE gorusler SET okundu=1 WHERE id=?", (gid,))
-        c.commit()
+        cur = c.cursor()
+        cur.execute("UPDATE gorusler SET okundu=1 WHERE id=%s", (gid,)); c.commit()
     return redirect(request.referrer or url_for("admin_gorusler"))
 
 @app.route("/admin/gorus/<int:gid>/sil", methods=["POST"])
 @giris_gerekli
 def gorus_sil(gid):
     with db() as c:
-        c.execute("DELETE FROM gorusler WHERE id=?", (gid,))
-        c.commit()
+        cur = c.cursor()
+        cur.execute("DELETE FROM gorusler WHERE id=%s", (gid,)); c.commit()
     return redirect(request.referrer or url_for("admin_gorusler"))
 
 @app.route("/admin/gorusler/tumunu_okundu", methods=["POST"])
 @giris_gerekli
 def gorusler_tumunu_okundu():
     with db() as c:
-        c.execute("UPDATE gorusler SET okundu=1")
-        c.commit()
+        cur = c.cursor()
+        cur.execute("UPDATE gorusler SET okundu=1"); c.commit()
     return redirect(url_for("admin_gorusler"))
 
 @app.route("/admin/gorusler/tumunu_sil", methods=["POST"])
@@ -874,44 +850,47 @@ def gorusler_tumunu_okundu():
 def gorusler_tumunu_sil():
     filtre_tur = request.form.get("tur","")
     with db() as c:
+        cur = c.cursor()
         if filtre_tur:
-            c.execute("DELETE FROM gorusler WHERE tur=?", (filtre_tur,))
+            cur.execute("DELETE FROM gorusler WHERE tur=%s", (filtre_tur,))
         else:
-            c.execute("DELETE FROM gorusler")
+            cur.execute("DELETE FROM gorusler")
         c.commit()
     ref = url_for("admin_gorusler")
     if filtre_tur: ref += f"?tur={filtre_tur}"
     return redirect(ref)
 
-# ─── Tam Veri Yedekleme (Yanıtlar dahil) ─────────────────────────
+# ─── Tam Veri Yedekleme ───────────────────────────────────────────
 @app.route("/admin/tam_veri_yedek/indir")
 @giris_gerekli
 def tam_veri_yedek_indir():
-    """Tüm yanıtlar, görüşler ve anket yapısını tek JSON'a yedekler."""
     with db() as c:
-        yanitlar = [dict(r) for r in c.execute("SELECT * FROM yanitlar ORDER BY id").fetchall()]
-        gorusler = [dict(r) for r in c.execute("SELECT * FROM gorusler ORDER BY id").fetchall()]
-        anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
+        cur = c.cursor()
+        cur.execute("SELECT * FROM yanitlar ORDER BY id")
+        yanitlar = fetchall_dict(cur)
+        cur.execute("SELECT * FROM gorusler ORDER BY id")
+        gorusler = fetchall_dict(cur)
+        cur.execute("SELECT * FROM anketler ORDER BY sira")
+        anketler_raw = fetchall_dict(cur)
     anket_listesi = []
     for a in anketler_raw:
         aobj = dict(a)
         with db() as c:
-            bolumler = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
+            cur = c.cursor()
+            cur.execute("SELECT * FROM bolumler WHERE anket_id=%s ORDER BY sira",(a["id"],))
+            bolumler = fetchall_dict(cur)
         aobj["bolumler"] = []
         for b in bolumler:
             bobj = dict(b)
             with db() as c:
-                sorular = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
-            bobj["sorular"] = [dict(s) for s in sorular]
+                cur = c.cursor()
+                cur.execute("SELECT * FROM sorular WHERE bolum_id=%s ORDER BY sira",(b["id"],))
+                sorular = fetchall_dict(cur)
+            bobj["sorular"] = sorular
             aobj["bolumler"].append(bobj)
         anket_listesi.append(aobj)
-    veri = {
-        "versiyon": "tam_veri_v1",
-        "tarih": simdi().strftime("%Y-%m-%d %H:%M"),
-        "anketler": anket_listesi,
-        "yanitlar": yanitlar,
-        "gorusler": gorusler,
-    }
+    veri = {"versiyon":"tam_veri_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+            "anketler":anket_listesi,"yanitlar":yanitlar,"gorusler":gorusler}
     js = json.dumps(veri, ensure_ascii=False, indent=2)
     buf = io.BytesIO(js.encode("utf-8"))
     fn = f"tam_veri_yedek_{simdi().strftime('%Y%m%d_%H%M')}.json"
@@ -920,49 +899,45 @@ def tam_veri_yedek_indir():
 @app.route("/admin/tam_veri_yedek/yukle", methods=["POST"])
 @giris_gerekli
 def tam_veri_yedek_yukle():
-    """Tam veri yedeğini geri yükler — mevcut verilere ekler, üstüne yazmaz."""
     f = request.files.get("veri_yedek_dosya")
     if not f or not f.filename.endswith(".json"):
         return "Geçersiz dosya.", 400
     try:
         veri = json.loads(f.read().decode("utf-8"))
-    except Exception:
+    except:
         return "Dosya okunamadı.", 400
     if veri.get("versiyon") != "tam_veri_v1":
         return "Bu dosya tam veri yedek formatında değil.", 400
     yuklenen = {"yanitlar":0,"gorusler":0}
     with db() as c:
-        # Yanıtları yükle — id çakışmasını önle
-        max_yanit_id = c.execute("SELECT COALESCE(MAX(id),0) FROM yanitlar").fetchone()[0]
+        cur = c.cursor()
         for y in veri.get("yanitlar",[]):
-            if c.execute("SELECT id FROM yanitlar WHERE id=?", (y["id"],)).fetchone():
-                continue  # zaten var
-            c.execute("INSERT INTO yanitlar (id,anket_id,tarih,saat,veriler) VALUES (?,?,?,?,?)",
+            cur.execute("SELECT id FROM yanitlar WHERE id=%s", (y["id"],))
+            if cur.fetchone(): continue
+            cur.execute("INSERT INTO yanitlar (id,anket_id,tarih,saat,veriler) VALUES (%s,%s,%s,%s,%s)",
                       (y["id"],y["anket_id"],y["tarih"],y["saat"],y["veriler"]))
             yuklenen["yanitlar"] += 1
-        # Görüşleri yükle
         for g in veri.get("gorusler",[]):
-            if c.execute("SELECT id FROM gorusler WHERE id=?", (g["id"],)).fetchone():
-                continue
-            c.execute("INSERT INTO gorusler (id,tur,icerik,tarih,saat,okundu) VALUES (?,?,?,?,?,?)",
+            cur.execute("SELECT id FROM gorusler WHERE id=%s", (g["id"],))
+            if cur.fetchone(): continue
+            cur.execute("INSERT INTO gorusler (id,tur,icerik,tarih,saat,okundu) VALUES (%s,%s,%s,%s,%s,%s)",
                       (g["id"],g["tur"],g["icerik"],g["tarih"],g["saat"],g.get("okundu",0)))
             yuklenen["gorusler"] += 1
         c.commit()
     flash_msg = f"Yüklendi: {yuklenen['yanitlar']} yanıt, {yuklenen['gorusler']} görüş."
     return redirect(url_for("admin_ayarlar") + "?veri_yuklendi=1&msg=" + flash_msg)
 
-
-# ─── Görüş Admin Notu Kaydet ─────────────────────────────────────
+# ─── Görüş Admin Notu ─────────────────────────────────────────────
 @app.route("/admin/gorus/<int:gid>/not", methods=["POST"])
 @giris_gerekli
 def gorus_not_kaydet(gid):
     not_metin = request.form.get("admin_not","").strip()
     with db() as c:
-        c.execute("UPDATE gorusler SET admin_not=? WHERE id=?", (not_metin, gid))
-        c.commit()
+        cur = c.cursor()
+        cur.execute("UPDATE gorusler SET admin_not=%s WHERE id=%s", (not_metin, gid)); c.commit()
     return redirect(request.referrer or url_for("admin_gorusler"))
 
-# ─── Görüşler Excel İndir ─────────────────────────────────────────
+# ─── Görüşler CSV ─────────────────────────────────────────────────
 @app.route("/admin/gorusler/excel")
 @giris_gerekli
 def gorusler_excel():
@@ -970,13 +945,15 @@ def gorusler_excel():
     filtre_tur = request.args.get("tur","")
     filtre_okundu = request.args.get("okundu","")
     with db() as c:
+        cur = c.cursor()
         q = "SELECT * FROM gorusler WHERE 1=1"
         params = []
-        if filtre_tur: q += " AND tur=?"; params.append(filtre_tur)
+        if filtre_tur: q += " AND tur=%s"; params.append(filtre_tur)
         if filtre_okundu == "0": q += " AND okundu=0"
         elif filtre_okundu == "1": q += " AND okundu=1"
         q += " ORDER BY id DESC"
-        gorusler = [dict(r) for r in c.execute(q, params).fetchall()]
+        cur.execute(q, params)
+        gorusler = fetchall_dict(cur)
     tur_map = {"dilek":"Dilek & Temenni","gorus":"Görüş & Öneri","sikayet":"Şikayet","tebrik":"Teşekkür & Tebrik"}
     buf = _io.StringIO()
     w = csv.writer(buf)
@@ -987,10 +964,9 @@ def gorusler_excel():
                     g["icerik"], g.get("admin_not","")])
     out = buf.getvalue().encode("utf-8-sig")
     fn = f"gorusler_{simdi().strftime('%Y%m%d_%H%M')}.csv"
-    return send_file(_io.BytesIO(out), mimetype="text/csv;charset=utf-8",
-                     download_name=fn, as_attachment=True)
+    return send_file(_io.BytesIO(out), mimetype="text/csv;charset=utf-8", download_name=fn, as_attachment=True)
 
-# ─── Yedekleme Merkezi Sayfası ────────────────────────────────────
+# ─── Yedekleme Merkezi ────────────────────────────────────────────
 @app.route("/admin/yedekleme", methods=["GET","POST"])
 @giris_gerekli
 def admin_yedekleme():
@@ -1006,19 +982,22 @@ def admin_yedekleme():
                     veri = json.loads(f.read().decode("utf-8"))
                     versiyon = veri.get("versiyon","")
                     with db() as c:
+                        cur = c.cursor()
                         if versiyon == "tam_v1":
                             hassas = {"admin_sifre","smtp_pass"}
                             for k, v in veri.get("ayarlar", {}).items():
                                 if k in hassas: continue
-                                c.execute("INSERT OR REPLACE INTO ayarlar VALUES (?,?)", (k, v))
+                                cur.execute("INSERT INTO ayarlar (anahtar,deger) VALUES (%s,%s) ON CONFLICT (anahtar) DO UPDATE SET deger=EXCLUDED.deger", (k, v))
                         elif versiyon == "tam_veri_v1":
                             for y in veri.get("yanitlar",[]):
-                                if not c.execute("SELECT id FROM yanitlar WHERE id=?",(y["id"],)).fetchone():
-                                    c.execute("INSERT INTO yanitlar (id,anket_id,tarih,saat,veriler) VALUES (?,?,?,?,?)",
+                                cur.execute("SELECT id FROM yanitlar WHERE id=%s",(y["id"],))
+                                if not cur.fetchone():
+                                    cur.execute("INSERT INTO yanitlar (id,anket_id,tarih,saat,veriler) VALUES (%s,%s,%s,%s,%s)",
                                               (y["id"],y["anket_id"],y["tarih"],y["saat"],y["veriler"]))
                             for g in veri.get("gorusler",[]):
-                                if not c.execute("SELECT id FROM gorusler WHERE id=?",(g["id"],)).fetchone():
-                                    c.execute("INSERT INTO gorusler (id,tur,icerik,tarih,saat,okundu,admin_not) VALUES (?,?,?,?,?,?,?)",
+                                cur.execute("SELECT id FROM gorusler WHERE id=%s",(g["id"],))
+                                if not cur.fetchone():
+                                    cur.execute("INSERT INTO gorusler (id,tur,icerik,tarih,saat,okundu,admin_not) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                                               (g["id"],g["tur"],g["icerik"],g["tarih"],g["saat"],g.get("okundu",0),g.get("admin_not","")))
                         else:
                             mesaj = ("hata","Tanınmayan yedek formatı.")
@@ -1029,94 +1008,94 @@ def admin_yedekleme():
                     mesaj = ("hata", f"Hata: {e}")
     ctx = gctx()
     with db() as c:
-        ctx["anket_sayisi"] = c.execute("SELECT COUNT(*) FROM anketler").fetchone()[0]
-        ctx["yanit_sayisi"] = c.execute("SELECT COUNT(*) FROM yanitlar").fetchone()[0]
-        ctx["gorus_sayisi"] = c.execute("SELECT COUNT(*) FROM gorusler").fetchone()[0]
-        ctx["ayar_sayisi"]  = c.execute("SELECT COUNT(*) FROM ayarlar").fetchone()[0]
+        cur = c.cursor()
+        cur.execute("SELECT COUNT(*) FROM anketler"); ctx["anket_sayisi"] = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM yanitlar"); ctx["yanit_sayisi"] = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM gorusler"); ctx["gorus_sayisi"] = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM ayarlar"); ctx["ayar_sayisi"] = cur.fetchone()[0]
     ctx["mesaj"] = mesaj
     return render_template("admin_yedekleme.html", **ctx)
 
-# ─── Seçili Yedek İndir (yedekleme merkezi) ──────────────────────
 @app.route("/admin/yedek/seçimli")
 @giris_gerekli
 def yedek_secimli():
     tur = request.args.get("tur","tam")
     simdi_str = simdi().strftime("%Y%m%d_%H%M")
     with db() as c:
-        ayarlar_raw = {r["anahtar"]:r["deger"] for r in c.execute("SELECT anahtar,deger FROM ayarlar").fetchall()}
-        hassas = {"admin_sifre","smtp_pass"}
-        ayarlar_temiz = {k:v for k,v in ayarlar_raw.items() if k not in hassas}
+        cur = c.cursor()
+        cur.execute("SELECT anahtar,deger FROM ayarlar")
+        ayarlar_raw = {r[0]:r[1] for r in cur.fetchall()}
+    hassas = {"admin_sifre","smtp_pass"}
+    ayarlar_temiz = {k:v for k,v in ayarlar_raw.items() if k not in hassas}
 
     if tur == "ayarlar":
         veri = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"ayarlar":ayarlar_temiz,"anketler":[]}
         fn = f"ayarlar_yedek_{simdi_str}.json"
     elif tur == "gorusler":
         with db() as c:
-            gorusler = [dict(r) for r in c.execute("SELECT * FROM gorusler ORDER BY id").fetchall()]
+            cur = c.cursor()
+            cur.execute("SELECT * FROM gorusler ORDER BY id")
+            gorusler = fetchall_dict(cur)
         veri = {"versiyon":"gorusler_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"gorusler":gorusler}
         fn = f"gorusler_yedek_{simdi_str}.json"
-    elif tur == "anketler":
+    elif tur in ["anketler","tam"]:
         with db() as c:
-            anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
+            cur = c.cursor()
+            cur.execute("SELECT * FROM anketler ORDER BY sira")
+            anketler_raw = fetchall_dict(cur)
         anket_listesi = []
         for a in anketler_raw:
             aobj = dict(a)
             with db() as c:
-                bolumler = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
+                cur = c.cursor()
+                cur.execute("SELECT * FROM bolumler WHERE anket_id=%s ORDER BY sira",(a["id"],))
+                bolumler = fetchall_dict(cur)
             aobj["bolumler"] = []
             for b in bolumler:
                 bobj = dict(b)
                 with db() as c:
-                    sorular = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
-                bobj["sorular"] = [dict(s) for s in sorular]
+                    cur = c.cursor()
+                    cur.execute("SELECT * FROM sorular WHERE bolum_id=%s ORDER BY sira",(b["id"],))
+                    sorular = fetchall_dict(cur)
+                bobj["sorular"] = sorular
                 aobj["bolumler"].append(bobj)
             anket_listesi.append(aobj)
-        veri = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
-                "ayarlar":ayarlar_temiz,"anketler":anket_listesi}
-        fn = f"anketler_yedek_{simdi_str}.json"
-    elif tur == "yanitlar":
+        if tur == "anketler":
+            veri = {"versiyon":"tam_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+                    "ayarlar":ayarlar_temiz,"anketler":anket_listesi}
+            fn = f"anketler_yedek_{simdi_str}.json"
+        else:
+            with db() as c:
+                cur = c.cursor()
+                cur.execute("SELECT * FROM yanitlar ORDER BY id")
+                yanitlar = fetchall_dict(cur)
+                cur.execute("SELECT * FROM gorusler ORDER BY id")
+                gorusler = fetchall_dict(cur)
+            veri = {"versiyon":"tam_veri_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
+                    "ayarlar":ayarlar_temiz,"anketler":anket_listesi,
+                    "yanitlar":yanitlar,"gorusler":gorusler}
+            fn = f"tam_yedek_{simdi_str}.json"
+    else:
         with db() as c:
-            yanitlar = [dict(r) for r in c.execute("SELECT * FROM yanitlar ORDER BY id").fetchall()]
+            cur = c.cursor()
+            cur.execute("SELECT * FROM yanitlar ORDER BY id")
+            yanitlar = fetchall_dict(cur)
         veri = {"versiyon":"yanitlar_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),"yanitlar":yanitlar}
         fn = f"yanitlar_yedek_{simdi_str}.json"
-    else:  # tam — her şey
-        with db() as c:
-            yanitlar = [dict(r) for r in c.execute("SELECT * FROM yanitlar ORDER BY id").fetchall()]
-            gorusler = [dict(r) for r in c.execute("SELECT * FROM gorusler ORDER BY id").fetchall()]
-            anketler_raw = c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
-        anket_listesi = []
-        for a in anketler_raw:
-            aobj = dict(a)
-            with db() as c:
-                bolumler = c.execute("SELECT * FROM bolumler WHERE anket_id=? ORDER BY sira",(a["id"],)).fetchall()
-            aobj["bolumler"] = []
-            for b in bolumler:
-                bobj = dict(b)
-                with db() as c:
-                    sorular = c.execute("SELECT * FROM sorular WHERE bolum_id=? ORDER BY sira",(b["id"],)).fetchall()
-                bobj["sorular"] = [dict(s) for s in sorular]
-                aobj["bolumler"].append(bobj)
-            anket_listesi.append(aobj)
-        veri = {"versiyon":"tam_veri_v1","tarih":simdi().strftime("%Y-%m-%d %H:%M"),
-                "ayarlar":ayarlar_temiz,"anketler":anket_listesi,
-                "yanitlar":yanitlar,"gorusler":gorusler}
-        fn = f"tam_yedek_{simdi_str}.json"
 
     js = json.dumps(veri, ensure_ascii=False, indent=2)
     buf = io.BytesIO(js.encode("utf-8"))
     return send_file(buf, mimetype="application/json", download_name=fn, as_attachment=True)
 
-
+# ─── Görüş Ayarlar ────────────────────────────────────────────────
 @app.route("/admin/gorus_ayarlar", methods=["GET","POST"])
 @giris_gerekli
 def admin_gorus_ayarlar():
     mesaj = None
     if request.method == "POST":
-        # Checkbox'lar — değer gelmediğinde "0" kaydet
         for k in ["gorus_aktif","gorus_dilek_aktif","gorus_gorus_aktif","gorus_sikayet_aktif","gorus_tebrik_aktif",
                   "gorus_geri_buton","gorus_anasayfa_buton"]:
             ayar_set(k, "1" if request.form.get(k) else "0")
-        # Normal metin/renk alanları
         for k in ["gorus_baslik","gorus_aciklama","gorus_buton_metin",
                   "gorus_buton_renk","gorus_buton_yeri","gorus_tema",
                   "gorus_dilek_ikon","gorus_dilek_renk","gorus_dilek_lbl",
@@ -1184,7 +1163,7 @@ def admin_gorus_ayarlar():
     })
     return render_template("admin_gorus_ayarlar.html", **ctx)
 
-# ─── QR Kod ──────────────────────────────────────────────────────
+# ─── QR Kod ───────────────────────────────────────────────────────
 @app.route("/admin/qr/<int:anket_id>")
 @giris_gerekli
 def qr_kod(anket_id):
@@ -1195,30 +1174,33 @@ def qr_kod(anket_id):
         qr.add_data(url); qr.make(fit=True)
         img=qr.make_image(fill_color="black",back_color="white")
         buf=io.BytesIO(); img.save(buf,"PNG"); buf.seek(0)
-        return send_file(buf,mimetype="image/png",
-                         download_name=f"anket_{anket_id}_qr.png",as_attachment=True)
+        return send_file(buf,mimetype="image/png",download_name=f"anket_{anket_id}_qr.png",as_attachment=True)
     except ImportError:
-        return "qrcode kütüphanesi kurulu değil. pip install qrcode[pil]",500
+        return "qrcode kütüphanesi kurulu değil.",500
 
 # ─── Anket CRUD ───────────────────────────────────────────────────
 @app.route("/admin/anketler")
 @giris_gerekli
 def admin_anketler():
     with db() as c:
-        anketler=c.execute("SELECT * FROM anketler ORDER BY sira").fetchall()
-        sayilar={r["anket_id"]:r["sayi"] for r in
-                 c.execute("SELECT anket_id,COUNT(*) as sayi FROM yanitlar GROUP BY anket_id").fetchall()}
-    ctx=gctx(); ctx["anketler"]=[dict(a) for a in anketler]; ctx["sayilar"]=sayilar
+        cur = c.cursor()
+        cur.execute("SELECT * FROM anketler ORDER BY sira")
+        anketler = fetchall_dict(cur)
+        cur.execute("SELECT anket_id,COUNT(*) as sayi FROM yanitlar GROUP BY anket_id")
+        sayilar = {r[0]:r[1] for r in cur.fetchall()}
+    ctx=gctx(); ctx["anketler"]=anketler; ctx["sayilar"]=sayilar
     return render_template("admin_anketler.html",**ctx)
 
 @app.route("/admin/anket/yeni",methods=["POST"])
 @giris_gerekli
 def anket_yeni():
     with db() as c:
-        aid=c.execute("INSERT INTO anketler (rol,baslik,icon,aktif,sira,aciklama) VALUES (?,?,?,1,99,?)",
+        cur = c.cursor()
+        cur.execute("INSERT INTO anketler (rol,baslik,icon,aktif,sira,aciklama) VALUES (%s,%s,%s,1,99,%s) RETURNING id",
                       (request.form.get("rol","diger"),request.form.get("baslik","Yeni Anket"),
-                       request.form.get("icon","📝"),request.form.get("aciklama",""))).lastrowid
-        c.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (?,?,0)",(aid,"Genel Sorular"))
+                       request.form.get("icon","📝"),request.form.get("aciklama","")))
+        aid = cur.fetchone()[0]
+        cur.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (%s,%s,0)",(aid,"Genel Sorular"))
         c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
@@ -1227,7 +1209,6 @@ def anket_yeni():
 def admin_anket_duzenle(aid):
     a=get_anket(aid)
     if not a: return redirect(url_for("admin_anketler"))
-    # Tüm sorular (koşullu soru seçimi için)
     tum_sorular=[]
     for b in a["bolumler"]:
         for s in b["sorular"]:
@@ -1236,17 +1217,16 @@ def admin_anket_duzenle(aid):
     ctx=gctx(); ctx["anket"]=a; ctx["tum_sorular"]=tum_sorular
     return render_template("admin_anket_duzenle.html",**ctx)
 
-
 @app.route("/admin/anket/<int:aid>/hizli_guncelle", methods=["POST"])
 @giris_gerekli
 def anket_hizli_guncelle(aid):
-    """İkon ve kart rengini hızlıca günceller."""
     icon = request.form.get("icon", "").strip()
     kart_renk = request.form.get("kart_renk", "").strip()
     with db() as c:
+        cur = c.cursor()
         if icon:
-            c.execute("UPDATE anketler SET icon=? WHERE id=?", (icon, aid))
-        c.execute("UPDATE anketler SET kart_renk=? WHERE id=?", (kart_renk, aid))
+            cur.execute("UPDATE anketler SET icon=%s WHERE id=%s", (icon, aid))
+        cur.execute("UPDATE anketler SET kart_renk=%s WHERE id=%s", (kart_renk, aid))
         c.commit()
     return redirect(url_for("admin_anketler"))
 
@@ -1254,8 +1234,9 @@ def anket_hizli_guncelle(aid):
 @giris_gerekli
 def anket_guncelle(aid):
     with db() as c:
-        c.execute("""UPDATE anketler SET baslik=?,icon=?,rol=?,aktif=?,
-                     aciklama=?,baslangic_tarihi=?,bitis_tarihi=?,gorunum=?,kart_renk=?,tek_seferlik=? WHERE id=?""",
+        cur = c.cursor()
+        cur.execute("""UPDATE anketler SET baslik=%s,icon=%s,rol=%s,aktif=%s,
+                     aciklama=%s,baslangic_tarihi=%s,bitis_tarihi=%s,gorunum=%s,kart_renk=%s,tek_seferlik=%s WHERE id=%s""",
                   (request.form.get("baslik"),request.form.get("icon"),
                    request.form.get("rol"),1 if request.form.get("aktif") else 0,
                    request.form.get("aciklama",""),
@@ -1264,28 +1245,34 @@ def anket_guncelle(aid):
                    request.form.get("gorunum","varsayilan"),
                    request.form.get("kart_renk",""),
                    1 if request.form.get("tek_seferlik") else 0,
-                   aid)); c.commit()
+                   aid))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/anket/<int:aid>/sil",methods=["POST"])
 @giris_gerekli
 def anket_sil(aid):
     with db() as c:
-        c.execute("DELETE FROM yanitlar WHERE anket_id=?",(aid,))
-        for b in c.execute("SELECT id FROM bolumler WHERE anket_id=?",(aid,)).fetchall():
-            c.execute("DELETE FROM sorular WHERE bolum_id=?",(b["id"],))
-        c.execute("DELETE FROM bolumler WHERE anket_id=?",(aid,))
-        c.execute("DELETE FROM anketler WHERE id=?",(aid,)); c.commit()
+        cur = c.cursor()
+        cur.execute("DELETE FROM yanitlar WHERE anket_id=%s",(aid,))
+        cur.execute("SELECT id FROM bolumler WHERE anket_id=%s",(aid,))
+        for b in cur.fetchall():
+            cur.execute("DELETE FROM sorular WHERE bolum_id=%s",(b[0],))
+        cur.execute("DELETE FROM bolumler WHERE anket_id=%s",(aid,))
+        cur.execute("DELETE FROM anketler WHERE id=%s",(aid,))
+        c.commit()
     return redirect(url_for("admin_anketler"))
 
-# ─── Bölüm CRUD ──────────────────────────────────────────────────
+# ─── Bölüm CRUD ───────────────────────────────────────────────────
 @app.route("/admin/bolum/ekle",methods=["POST"])
 @giris_gerekli
 def bolum_ekle():
     aid=int(request.form["anket_id"])
     with db() as c:
-        c.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (?,?,99)",
-                  (aid,request.form.get("baslik","Yeni Bölüm"))); c.commit()
+        cur = c.cursor()
+        cur.execute("INSERT INTO bolumler (anket_id,baslik,sira) VALUES (%s,%s,99)",
+                  (aid,request.form.get("baslik","Yeni Bölüm")))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/bolum/<int:bid>/guncelle",methods=["POST"])
@@ -1293,19 +1280,21 @@ def bolum_ekle():
 def bolum_guncelle(bid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        gorsel_mevcut = c.execute("SELECT gorsel FROM bolumler WHERE id=?",(bid,)).fetchone()
-        gorsel_mevcut = gorsel_mevcut["gorsel"] if gorsel_mevcut else ""
+        cur = c.cursor()
+        cur.execute("SELECT gorsel FROM bolumler WHERE id=%s",(bid,))
+        row = cur.fetchone()
+        gorsel_mevcut = row[0] if row else ""
         fg=request.files.get("bolum_gorsel")
         if fg and fg.filename:
-            import base64 as _b64
             data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
             mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
-            gorsel_mevcut=f"data:{mime};base64,{_b64.b64encode(data).decode()}"
+            gorsel_mevcut=f"data:{mime};base64,{base64.b64encode(data).decode()}"
         elif request.form.get("bolum_gorsel_sil"):
             gorsel_mevcut=""
-        c.execute("UPDATE bolumler SET baslik=?,aktif=?,gorsel=? WHERE id=?",
+        cur.execute("UPDATE bolumler SET baslik=%s,aktif=%s,gorsel=%s WHERE id=%s",
                   (request.form.get("baslik"),1 if request.form.get("bolum_aktif") else 0,
-                   gorsel_mevcut, bid)); c.commit()
+                   gorsel_mevcut, bid))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/bolum/<int:bid>/sil",methods=["POST"])
@@ -1313,13 +1302,14 @@ def bolum_guncelle(bid):
 def bolum_sil(bid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        c.execute("DELETE FROM sorular WHERE bolum_id=?",(bid,))
-        c.execute("DELETE FROM bolumler WHERE id=?",(bid,)); c.commit()
+        cur = c.cursor()
+        cur.execute("DELETE FROM sorular WHERE bolum_id=%s",(bid,))
+        cur.execute("DELETE FROM bolumler WHERE id=%s",(bid,))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
-# ─── Soru CRUD ───────────────────────────────────────────────────
+# ─── Soru CRUD ────────────────────────────────────────────────────
 def _sec_listesi_olustur(form):
-    """Form verilerinden seçenek listesi oluşturur (esnek metin girişi desteği)."""
     metinler = form.getlist("secenek")
     mg_flags = form.getlist("secenek_mg")
     mz_flags = form.getlist("secenek_mz")
@@ -1327,13 +1317,12 @@ def _sec_listesi_olustur(form):
     secs = []
     for i, m in enumerate(metinler):
         m = m.strip()
-        if not m:
-            continue
+        if not m: continue
         mg = 1 if i < len(mg_flags) and mg_flags[i] == "1" else 0
         mz = 1 if i < len(mz_flags) and mz_flags[i] == "1" else 0
         ph = ph_vals[i].strip() if i < len(ph_vals) else ""
         if mg == 0 and mz == 0 and not ph:
-            secs.append(m)          # geriye dönük uyumluluk için düz string
+            secs.append(m)
         else:
             secs.append({"metin": m, "mg": mg, "mz": mz, "ph": ph})
     return secs
@@ -1347,7 +1336,6 @@ def soru_ekle():
     kosul_sid=request.form.get("kosul_soru_id") or None
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
-    # Görsel yükleme
     gorsel=""
     fg=request.files.get("soru_gorsel")
     if fg and fg.filename:
@@ -1355,13 +1343,15 @@ def soru_ekle():
         mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
         gorsel=f"data:{mime};base64,{base64.b64encode(data).decode()}"
     with db() as c:
-        c.execute("""INSERT INTO sorular
+        cur = c.cursor()
+        cur.execute("""INSERT INTO sorular
                   (bolum_id,metin,tip,secenekler,zorunlu,sira,kosul_soru_id,kosul_deger,aktif,gorsel)
-                  VALUES (?,?,?,?,?,99,?,?,1,?)""",
+                  VALUES (%s,%s,%s,%s,%s,99,%s,%s,1,%s)""",
                   (bid,request.form.get("metin","Yeni soru?"),tip,
                    json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
-                   kosul_sid,kosul_deg,gorsel)); c.commit()
+                   kosul_sid,kosul_deg,gorsel))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/guncelle",methods=["POST"])
@@ -1373,24 +1363,26 @@ def soru_guncelle(sid):
     kosul_deg=request.form.get("kosul_deger") or None
     if kosul_sid: kosul_sid=int(kosul_sid)
     with db() as c:
-        # Görsel yükleme
-        gorsel_mevcut = c.execute("SELECT gorsel FROM sorular WHERE id=?",(sid,)).fetchone()["gorsel"] or ""
+        cur = c.cursor()
+        cur.execute("SELECT gorsel FROM sorular WHERE id=%s",(sid,))
+        row = cur.fetchone()
+        gorsel_mevcut = row[0] if row else ""
         fg=request.files.get("soru_gorsel_"+str(sid))
         if not fg: fg=request.files.get("soru_gorsel")
         if fg and fg.filename:
-            import base64 as _b64
             data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
             mime="image/png" if ext=="png" else "image/gif" if ext=="gif" else "image/jpeg"
-            gorsel_mevcut=f"data:{mime};base64,{_b64.b64encode(data).decode()}"
+            gorsel_mevcut=f"data:{mime};base64,{base64.b64encode(data).decode()}"
         elif request.form.get("soru_gorsel_sil"):
             gorsel_mevcut=""
-        c.execute("""UPDATE sorular SET metin=?,tip=?,secenekler=?,zorunlu=?,
-                     kosul_soru_id=?,kosul_deger=?,aktif=?,gorsel=? WHERE id=?""",
+        cur.execute("""UPDATE sorular SET metin=%s,tip=%s,secenekler=%s,zorunlu=%s,
+                     kosul_soru_id=%s,kosul_deger=%s,aktif=%s,gorsel=%s WHERE id=%s""",
                   (request.form.get("metin"),tip,json.dumps(secs,ensure_ascii=False),
                    1 if request.form.get("zorunlu") else 0,
                    kosul_sid,kosul_deg,
                    1 if request.form.get("soru_aktif") else 0,
-                   gorsel_mevcut, sid)); c.commit()
+                   gorsel_mevcut, sid))
+        c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
 @app.route("/admin/soru/<int:sid>/sil",methods=["POST"])
@@ -1398,26 +1390,30 @@ def soru_guncelle(sid):
 def soru_sil(sid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        c.execute("DELETE FROM sorular WHERE id=?",(sid,)); c.commit()
+        cur = c.cursor()
+        cur.execute("DELETE FROM sorular WHERE id=%s",(sid,)); c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
-# ── Sıralama ─────────────────────────────────────────────────────
+# ─── Sıralama ─────────────────────────────────────────────────────
 @app.route("/admin/bolum/<int:bid>/sira",methods=["POST"])
 @giris_gerekli
 def bolum_sira(bid):
     aid=int(request.form["anket_id"])
     yon=request.form.get("yon","asagi")
     with db() as con:
-        row=con.execute("SELECT sira FROM bolumler WHERE id=?",(bid,)).fetchone()
+        cur = con.cursor()
+        cur.execute("SELECT sira FROM bolumler WHERE id=%s",(bid,))
+        row = cur.fetchone()
         if not row: return redirect(url_for("admin_anket_duzenle",aid=aid))
-        mevcut=row["sira"]
+        mevcut=row[0]
         if yon=="yukari":
-            hedef=con.execute("SELECT id,sira FROM bolumler WHERE anket_id=? AND sira<? ORDER BY sira DESC LIMIT 1",(aid,mevcut)).fetchone()
+            cur.execute("SELECT id,sira FROM bolumler WHERE anket_id=%s AND sira<%s ORDER BY sira DESC LIMIT 1",(aid,mevcut))
         else:
-            hedef=con.execute("SELECT id,sira FROM bolumler WHERE anket_id=? AND sira>? ORDER BY sira ASC LIMIT 1",(aid,mevcut)).fetchone()
+            cur.execute("SELECT id,sira FROM bolumler WHERE anket_id=%s AND sira>%s ORDER BY sira ASC LIMIT 1",(aid,mevcut))
+        hedef = cur.fetchone()
         if hedef:
-            con.execute("UPDATE bolumler SET sira=? WHERE id=?",(hedef["sira"],bid))
-            con.execute("UPDATE bolumler SET sira=? WHERE id=?",(mevcut,hedef["id"]))
+            cur.execute("UPDATE bolumler SET sira=%s WHERE id=%s",(hedef[1],bid))
+            cur.execute("UPDATE bolumler SET sira=%s WHERE id=%s",(mevcut,hedef[0]))
             con.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
@@ -1428,16 +1424,19 @@ def soru_sira(sid):
     bid=int(request.form["bolum_id"])
     yon=request.form.get("yon","asagi")
     with db() as con:
-        row=con.execute("SELECT sira FROM sorular WHERE id=?",(sid,)).fetchone()
+        cur = con.cursor()
+        cur.execute("SELECT sira FROM sorular WHERE id=%s",(sid,))
+        row = cur.fetchone()
         if not row: return redirect(url_for("admin_anket_duzenle",aid=aid))
-        mevcut=row["sira"]
+        mevcut=row[0]
         if yon=="yukari":
-            hedef=con.execute("SELECT id,sira FROM sorular WHERE bolum_id=? AND sira<? ORDER BY sira DESC LIMIT 1",(bid,mevcut)).fetchone()
+            cur.execute("SELECT id,sira FROM sorular WHERE bolum_id=%s AND sira<%s ORDER BY sira DESC LIMIT 1",(bid,mevcut))
         else:
-            hedef=con.execute("SELECT id,sira FROM sorular WHERE bolum_id=? AND sira>? ORDER BY sira ASC LIMIT 1",(bid,mevcut)).fetchone()
+            cur.execute("SELECT id,sira FROM sorular WHERE bolum_id=%s AND sira>%s ORDER BY sira ASC LIMIT 1",(bid,mevcut))
+        hedef = cur.fetchone()
         if hedef:
-            con.execute("UPDATE sorular SET sira=? WHERE id=?",(hedef["sira"],sid))
-            con.execute("UPDATE sorular SET sira=? WHERE id=?",(mevcut,hedef["id"]))
+            cur.execute("UPDATE sorular SET sira=%s WHERE id=%s",(hedef[1],sid))
+            cur.execute("UPDATE sorular SET sira=%s WHERE id=%s",(mevcut,hedef[0]))
             con.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
 
@@ -1446,34 +1445,29 @@ def soru_sira(sid):
 def soru_toggle_aktif(sid):
     aid=int(request.form["anket_id"])
     with db() as c:
-        mevcut=c.execute("SELECT aktif FROM sorular WHERE id=?",(sid,)).fetchone()
-        if mevcut:
-            yeni=0 if mevcut["aktif"] else 1
-            c.execute("UPDATE sorular SET aktif=? WHERE id=?",(yeni,sid))
+        cur = c.cursor()
+        cur.execute("SELECT aktif FROM sorular WHERE id=%s",(sid,))
+        row = cur.fetchone()
+        if row:
+            yeni=0 if row[0] else 1
+            cur.execute("UPDATE sorular SET aktif=%s WHERE id=%s",(yeni,sid))
             c.commit()
     return redirect(url_for("admin_anket_duzenle",aid=aid))
-
 
 @app.route("/admin/soru/<int:sid>/bolum_degistir", methods=["POST"])
 @giris_gerekli
 def soru_bolum_degistir(sid):
-    """Soruyu farklı bir bölüme taşır."""
     aid = int(request.form["anket_id"])
     hedef_bid = int(request.form["hedef_bolum_id"])
     with db() as c:
-        # Hedef bölümde en sona koy
-        max_sira = c.execute(
-            "SELECT COALESCE(MAX(sira),0) as ms FROM sorular WHERE bolum_id=?",
-            (hedef_bid,)
-        ).fetchone()["ms"]
-        c.execute(
-            "UPDATE sorular SET bolum_id=?, sira=? WHERE id=?",
-            (hedef_bid, max_sira + 1, sid)
-        )
+        cur = c.cursor()
+        cur.execute("SELECT COALESCE(MAX(sira),0) FROM sorular WHERE bolum_id=%s",(hedef_bid,))
+        max_sira = cur.fetchone()[0]
+        cur.execute("UPDATE sorular SET bolum_id=%s, sira=%s WHERE id=%s",(hedef_bid, max_sira+1, sid))
         c.commit()
     return redirect(url_for("admin_anket_duzenle", aid=aid))
 
-# ─── Ayarlar ─────────────────────────────────────────────────────
+# ─── Ayarlar ──────────────────────────────────────────────────────
 @app.route("/admin/ayarlar",methods=["GET","POST"])
 @giris_gerekli
 def admin_ayarlar():
@@ -1495,7 +1489,6 @@ def admin_ayarlar():
                   "kilit_gorsel_genislik","kilit_gorsel_sekil"]:
             v=request.form.get(k)
             if v is not None: ayar_set(k,v)
-        # Checkbox alanları — işaretlenmeyince "0" kaydet
         for ck in ["bildirim_aktif","hero_gorsel_orijinal","anket_gorunum_secim_goster",
                    "header_aktif","header_sehir_aktif","header_anasayfa_aktif",
                    "gorus_anasayfa_buton","gorus_geri_buton",
@@ -1508,7 +1501,6 @@ def admin_ayarlar():
             ayar_set("amblem",f"data:{mime};base64,{base64.b64encode(data).decode()}")
         elif request.form.get("amblem_sil"):
             ayar_set("amblem","")
-        # Hero görseli
         fg=request.files.get("hero_gorsel")
         if fg and fg.filename:
             data=fg.read(); ext=fg.filename.rsplit(".",1)[-1].lower()
@@ -1516,8 +1508,6 @@ def admin_ayarlar():
             ayar_set("hero_gorsel",f"data:{mime};base64,{base64.b64encode(data).decode()}")
         elif request.form.get("hero_gorsel_sil"):
             ayar_set("hero_gorsel","")
-        # Görüş logo
-        # Kilit görseli (ana form içinde)
         fk=request.files.get("kilit_gorsel")
         if fk and fk.filename:
             data=fk.read(); ext=fk.filename.rsplit(".",1)[-1].lower()
@@ -1532,7 +1522,6 @@ def admin_ayarlar():
             ayar_set("gorus_logo",f"data:{mime};base64,{base64.b64encode(data).decode()}")
         elif request.form.get("gorus_logo_sil"):
             ayar_set("gorus_logo","")
-        # Görüş arka plan görseli
         fb=request.files.get("gorus_arka_gorsel")
         if fb and fb.filename:
             data=fb.read(); ext=fb.filename.rsplit(".",1)[-1].lower()
@@ -1582,10 +1571,9 @@ def admin_ayarlar():
                 "anket_anasayfa_metin":ayar("anket_anasayfa_metin","Ana Sayfaya Dön"),
                 "anket_anasayfa_url":ayar("anket_anasayfa_url","/"),
                 "anket_anasayfa_url_tip":ayar("anket_anasayfa_url_tip","ic")})
-
     return render_template("admin_ayarlar.html",**ctx)
 
-# ─── Excel ───────────────────────────────────────────────────────
+# ─── Excel ────────────────────────────────────────────────────────
 @app.route("/admin/excel/<int:anket_id>")
 @giris_gerekli
 def excel_indir(anket_id):
@@ -1596,7 +1584,9 @@ def excel_indir(anket_id):
     a=get_anket(anket_id)
     if not a: return redirect(url_for("admin_panel"))
     with db() as c:
-        yanitlar=c.execute("SELECT * FROM yanitlar WHERE anket_id=? ORDER BY id",(anket_id,)).fetchall()
+        cur = c.cursor()
+        cur.execute("SELECT * FROM yanitlar WHERE anket_id=%s ORDER BY id",(anket_id,))
+        yanitlar = fetchall_dict(cur)
     wb=openpyxl.Workbook(); ws=wb.active; ws.title=a["baslik"][:30]
     hdrs=["No","Tarih","Saat"]; sid_order=[]
     for b in a["bolumler"]:
