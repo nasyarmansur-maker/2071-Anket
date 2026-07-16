@@ -212,12 +212,28 @@ def fetchone_dict(cur):
     row = cur.fetchone()
     return dict(zip(cols, row)) if row else None
 
-def ayar(k, v=""):
+# ─── Ayar önbelleği ──────────────────────────────────────────────
+_ayar_cache = {}
+
+def _ayar_cache_yukle():
+    global _ayar_cache
     with db() as c:
         cur = c.cursor()
-        cur.execute("SELECT deger FROM ayarlar WHERE anahtar=%s",(k,))
-        r = cur.fetchone()
-    return r[0] if r else v
+        cur.execute("SELECT anahtar, deger FROM ayarlar")
+        _ayar_cache = {r[0]: r[1] for r in cur.fetchall()}
+
+def ayar(k, v=""):
+    if not _ayar_cache:
+        _ayar_cache_yukle()
+    return _ayar_cache.get(k, v)
+
+def ayar_set(k, v):
+    global _ayar_cache
+    with db() as c:
+        cur = c.cursor()
+        cur.execute("INSERT INTO ayarlar (anahtar,deger) VALUES (%s,%s) ON CONFLICT (anahtar) DO UPDATE SET deger=EXCLUDED.deger",(k,v))
+        c.commit()
+    _ayar_cache[k] = v  # önbelleği güncelle
 
 def simdi():
     try:
@@ -225,12 +241,6 @@ def simdi():
     except Exception:
         offset = 3
     return datetime.now(timezone(timedelta(hours=offset)))
-
-def ayar_set(k,v):
-    with db() as c:
-        cur = c.cursor()
-        cur.execute("INSERT INTO ayarlar (anahtar,deger) VALUES (%s,%s) ON CONFLICT (anahtar) DO UPDATE SET deger=EXCLUDED.deger",(k,v))
-        c.commit()
 
 def get_anket(aid):
     with db() as c:
