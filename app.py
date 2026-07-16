@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify, make_response
-import psycopg2, psycopg2.extras, json, os, io, base64, smtplib, qrcode
+import psycopg2, psycopg2.extras, psycopg2.pool, json, os, io, base64, smtplib, qrcode
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from email.mime.text import MIMEText
@@ -11,10 +11,27 @@ app.secret_key = "okul_anket_super_gizli_2024"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # ─── Veritabanı ───────────────────────────────────────────────────
+_pool = None
+
+def get_pool():
+    global _pool
+    if _pool is None:
+        _pool = psycopg2.pool.SimpleConnectionPool(1, 5, DATABASE_URL)
+    return _pool
+
+class DbConn:
+    def __init__(self):
+        self.con = get_pool().getconn()
+        self.con.autocommit = False
+    def __enter__(self):
+        return self.con
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            self.con.rollback()
+        get_pool().putconn(self.con)
+
 def db():
-    con = psycopg2.connect(DATABASE_URL)
-    con.autocommit = False
-    return con
+    return DbConn()
 
 def db_init():
     with db() as c:
